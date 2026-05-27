@@ -18,3 +18,11 @@ export function formatDateEntry(isoDate) {
 export function formatMonthYear(monthKey) {
   return format(parseISO(`${monthKey}-01`), 'MMMM yyyy', { locale: fr }).toUpperCase()
 }
+
+export function formatDatePlan(isoDate) {
+  return format(parseISO(isoDate), 'd MMM yyyy', { locale: fr })
+}
+
+export function formatDatePlanShort(isoDate) {
+  return format(parseISO(isoDate), 'd MMM yyyy', { locale: fr })
+}

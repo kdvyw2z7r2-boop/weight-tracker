@@ -1,4 +1,5 @@
 import ExportButton from '../components/ExportButton'
+import { formatPace } from '../utils/weightPlan'
 
 function IOSSwitch({ checked, onChange, label }) {
   return (
@@ -21,7 +22,7 @@ function IOSSwitch({ checked, onChange, label }) {
   )
 }
 
-function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings }) {
+function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, onEditPlan }) {
   const onUnitChange = (nextUnit) => {
     if (nextUnit !== settings.unit) {
       entriesApi.convertAllUnits(nextUnit)
@@ -95,6 +96,27 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings })
       </div>
 
       <div className="animate-fade-up animate-stagger-2">
+        <p className="section-label mb-3">Plan de poids</p>
+        <div className="card-base space-y-4">
+          <div>
+            <p className="text-sm font-medium text-text-primary">Rythme et points de contrôle</p>
+            <p className="mt-0.5 text-[13px] text-text-tertiary">
+              {settings.weeklyPace != null
+                ? `Rythme actuel : ${formatPace(settings.weeklyPace)}`
+                : 'Aucun rythme défini'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onEditPlan}
+            className="press-button h-12 w-full rounded-xl bg-[#A78BFA]/15 text-[15px] font-medium text-[#A78BFA]"
+          >
+            {settings.weeklyPace != null ? 'Ajuster le plan de poids' : 'Configurer le plan de poids'}
+          </button>
+        </div>
+      </div>
+
+      <div className="animate-fade-up animate-stagger-3">
         <p className="section-label mb-3">Rappels</p>
         <div className="card-base space-y-4">
           <div className="flex items-center justify-between gap-4">
@@ -122,7 +144,7 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings })
         </div>
       </div>
 
-      <div className="animate-fade-up animate-stagger-3">
+      <div className="animate-fade-up animate-stagger-4">
         <p className="section-label mb-3">Données</p>
         <div className="card-base space-y-3">
           <ExportButton onExport={entriesApi.exportCSV} label="Exporter en CSV" />
@@ -149,7 +171,7 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings })
         </div>
       </div>
 
-      <div className="animate-fade-up animate-stagger-4">
+      <div className="animate-fade-up animate-stagger-5">
         <p className="section-label mb-3">Zone de danger</p>
         <button
           type="button"

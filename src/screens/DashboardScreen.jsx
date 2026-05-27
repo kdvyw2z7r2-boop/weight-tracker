@@ -13,6 +13,7 @@ import {
   getLowestIn7Days,
   getMonthVariation,
 } from '../utils/stats'
+import { computeWeightPlan, formatPace } from '../utils/weightPlan'
 
 const PERIODS = [
   { key: '2w', label: '2 sem.', days: 14 },
@@ -22,7 +23,7 @@ const PERIODS = [
   { key: 'all', label: 'Tout', days: null },
 ]
 
-function DashboardScreen({ entries, settings, movingAverage, onAdd }) {
+function DashboardScreen({ entries, settings, movingAverage, onAdd, onEditPlan }) {
   const [period, setPeriod] = useState('all')
   const latest = entries[0]
   const previous = entries[1]
@@ -39,6 +40,16 @@ function DashboardScreen({ entries, settings, movingAverage, onAdd }) {
   const bmi = latest ? getBmi(latest.weight, settings.height) : null
   const bmiCategory = getBmiCategory(bmi)
   const animatedWeight = useAnimatedNumber(latest?.weight ?? 0, 800)
+
+  const weightPlan = useMemo(() => {
+    if (!settings.weeklyPace || !latest) return null
+    return computeWeightPlan({
+      startWeight: latest.weight,
+      targetWeight: settings.targetWeight,
+      weeklyPace: settings.weeklyPace,
+      startDate: latest.date,
+    })
+  }, [settings.weeklyPace, settings.targetWeight, latest])
 
   const filteredEntriesAsc = useMemo(() => {
     const selected = PERIODS.find((item) => item.key === period)
@@ -141,7 +152,15 @@ function DashboardScreen({ entries, settings, movingAverage, onAdd }) {
 
           <div className="card-base animate-fade-up animate-stagger-3">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-medium text-text-primary">Évolution du poids</p>
+              <div>
+                <p className="text-sm font-medium text-text-primary">Évolution du poids</p>
+                {weightPlan ? (
+                  <p className="mt-0.5 text-[12px] text-[#A78BFA]">
+                    {weightPlan.checkpoints.length} point{weightPlan.checkpoints.length > 1 ? 's' : ''} de contrôle ·{' '}
+                    {formatPace(weightPlan.weeklyPace)}
+                  </p>
+                ) : null}
+              </div>
               <span className="text-[12px] text-text-tertiary">{filteredEntriesAsc.length} entrée(s)</span>
             </div>
             <WeightChart
@@ -149,7 +168,25 @@ function DashboardScreen({ entries, settings, movingAverage, onAdd }) {
               movingAverage={filteredMovingAverage}
               targetWeight={settings.targetWeight}
               unit={settings.unit}
+              plan={weightPlan}
             />
+            {weightPlan ? (
+              <button
+                type="button"
+                onClick={onEditPlan}
+                className="press-button mt-3 w-full text-[13px] font-medium text-[#A78BFA]"
+              >
+                Ajuster l&apos;objectif et le rythme
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onEditPlan}
+                className="press-button mt-3 w-full rounded-xl bg-bg-elevated py-2.5 text-[13px] font-medium text-text-secondary"
+              >
+                Définir un rythme et des points de contrôle
+              </button>
+            )}
             <div className="mt-4">
               <PillSelector options={PERIODS} value={period} onChange={setPeriod} />
             </div>

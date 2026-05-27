@@ -2,18 +2,40 @@ import { useMemo, useState } from 'react'
 import BottomNav from './BottomNav'
 import AddWeightModal from './components/AddWeightModal'
 import PageTransition from './components/PageTransition'
+import WeightPlanModal from './components/WeightPlanModal'
 import useEntries from './hooks/useEntries'
 import useSettings from './hooks/useSettings'
 import DashboardScreen from './screens/DashboardScreen'
 import LogScreen from './screens/LogScreen'
+import PlanScreen from './screens/PlanScreen'
 import SettingsScreen from './screens/SettingsScreen'
 import StatsScreen from './screens/StatsScreen'
 
 function App() {
   const [tab, setTab] = useState('dashboard')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
+  const [planModalDismissed, setPlanModalDismissed] = useState(false)
   const { settings, updateSettings, resetSettings } = useSettings()
   const entriesApi = useEntries(settings.unit)
+
+  const latest = entriesApi.entries[0]
+  const canConfigurePlan = Boolean(latest && settings.targetWeight && latest.weight > settings.targetWeight)
+  const shouldAutoOpenPlan =
+    canConfigurePlan &&
+    !settings.planSetupComplete &&
+    settings.weeklyPace == null &&
+    !planModalDismissed &&
+    (tab === 'plan' || tab === 'dashboard')
+
+  const openPlanModal = () => setIsPlanModalOpen(true)
+  const closePlanModal = () => {
+    setIsPlanModalOpen(false)
+    setPlanModalDismissed(true)
+    if (!settings.planSetupComplete && settings.weeklyPace == null) {
+      updateSettings({ planSetupComplete: true })
+    }
+  }
 
   const activeScreen = useMemo(() => {
     switch (tab) {
@@ -28,6 +50,10 @@ function App() {
         )
       case 'stats':
         return <StatsScreen entries={entriesApi.entries} settings={settings} />
+      case 'plan':
+        return (
+          <PlanScreen entries={entriesApi.entries} settings={settings} onEditPlan={openPlanModal} />
+        )
       case 'settings':
         return (
           <SettingsScreen
@@ -35,6 +61,7 @@ function App() {
             settings={settings}
             updateSettings={updateSettings}
             resetSettings={resetSettings}
+            onEditPlan={openPlanModal}
           />
         )
       default:
@@ -44,6 +71,7 @@ function App() {
             settings={settings}
             movingAverage={entriesApi.getMovingAverage(7)}
             onAdd={() => setIsModalOpen(true)}
+            onEditPlan={openPlanModal}
           />
         )
     }
@@ -61,6 +89,18 @@ function App() {
         unit={settings.unit}
         onClose={() => setIsModalOpen(false)}
         onSave={entriesApi.addEntry}
+      />
+      <WeightPlanModal
+        key={`plan-${settings.weeklyPace ?? 'new'}-${isPlanModalOpen || shouldAutoOpenPlan}`}
+        isOpen={isPlanModalOpen || shouldAutoOpenPlan}
+        onClose={closePlanModal}
+        onSave={updateSettings}
+        onRemove={() => updateSettings({ weeklyPace: null, planSetupComplete: true })}
+        startWeight={latest?.weight}
+        targetWeight={settings.targetWeight}
+        startDate={latest?.date}
+        weeklyPace={settings.weeklyPace}
+        unit={settings.unit}
       />
     </div>
   )

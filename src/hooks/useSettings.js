@@ -9,6 +9,8 @@ const defaultSettings = {
   reminderEnabled: false,
   reminderTime: '08:00',
   theme: 'dark',
+  weeklyPace: null,
+  planSetupComplete: false,
 }
 
 function useSettings() {
