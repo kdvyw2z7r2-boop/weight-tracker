@@ -3,7 +3,7 @@ function ExportButton({ onExport, label }) {
     <button
       type="button"
       onClick={onExport}
-      className="w-full rounded-xl border border-border bg-bg-elevated px-3 py-2 text-left"
+      className="press-button flex h-12 w-full items-center rounded-xl bg-bg-elevated px-4 text-left text-[15px] text-text-primary transition duration-150"
     >
       {label}
     </button>

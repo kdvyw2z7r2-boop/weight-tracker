@@ -1,27 +1,97 @@
+import { useLayoutEffect, useRef, useState } from 'react'
+
 const tabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
-  { id: 'log', label: 'Log', icon: '📝' },
-  { id: 'stats', label: 'Stats', icon: '📊' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' },
+  {
+    id: 'dashboard',
+    label: 'Poids',
+    icon: () => (
+      <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <rect x="3" y="10" width="18" height="10" rx="2" />
+        <path d="M8 10V7a4 4 0 0 1 8 0v3" strokeLinecap="round" />
+        <circle cx="12" cy="15" r="2" />
+      </svg>
+    ),
+  },
+  {
+    id: 'log',
+    label: 'Journal',
+    icon: () => (
+      <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <path d="M8 6h13M8 12h13M8 18h13" strokeLinecap="round" />
+        <circle cx="4" cy="6" r="1" fill="currentColor" stroke="none" />
+        <circle cx="4" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="4" cy="18" r="1" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
+  {
+    id: 'stats',
+    label: 'Stats',
+    icon: () => (
+      <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <path d="M4 19V5M10 19V9M16 19v-6M22 19V3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'settings',
+    label: 'Réglages',
+    icon: () => (
+      <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <circle cx="12" cy="12" r="3" />
+        <path
+          d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
 ]
 
 function BottomNav({ current, onChange }) {
+  const containerRef = useRef(null)
+  const buttonRefs = useRef({})
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 })
+
+  useLayoutEffect(() => {
+    const button = buttonRefs.current[current]
+    const container = containerRef.current
+    if (!button || !container) return
+    const containerRect = container.getBoundingClientRect()
+    const buttonRect = button.getBoundingClientRect()
+    setIndicator({
+      left: buttonRect.left - containerRect.left + buttonRect.width / 2 - 16,
+      width: 32,
+    })
+  }, [current])
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-bg-card pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto grid h-16 w-full max-w-md grid-cols-4">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onChange(tab.id)}
-            className={`flex flex-col items-center justify-center text-xs transition ${
-              current === tab.id ? 'text-white' : 'text-text-secondary'
-            }`}
-          >
-            <span className="text-lg">{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
+    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-bg-nav/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+      <div ref={containerRef} className="relative mx-auto grid h-16 w-full max-w-md grid-cols-4">
+        <span
+          className="nav-indicator absolute top-0 h-0.5 rounded-full bg-white transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+          style={{ left: indicator.left, width: indicator.width }}
+          aria-hidden="true"
+        />
+        {tabs.map((tab) => {
+          const active = current === tab.id
+          return (
+            <button
+              key={tab.id}
+              ref={(node) => {
+                buttonRefs.current[tab.id] = node
+              }}
+              type="button"
+              onClick={() => onChange(tab.id)}
+              className={`press-button flex flex-col items-center justify-center gap-1 transition-colors duration-200 ${
+                active ? 'text-white' : 'text-text-tertiary'
+              }`}
+            >
+              {tab.icon()}
+              <span className="text-[10px] font-medium">{tab.label}</span>
+            </button>
+          )
+        })}
       </div>
     </nav>
   )

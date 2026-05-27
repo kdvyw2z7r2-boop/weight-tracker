@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import BottomNav from './BottomNav'
 import AddWeightModal from './components/AddWeightModal'
+import PageTransition from './components/PageTransition'
 import useEntries from './hooks/useEntries'
 import useSettings from './hooks/useSettings'
 import DashboardScreen from './screens/DashboardScreen'
@@ -17,7 +18,14 @@ function App() {
   const activeScreen = useMemo(() => {
     switch (tab) {
       case 'log':
-        return <LogScreen {...entriesApi} onAdd={() => setIsModalOpen(true)} />
+        return (
+          <LogScreen
+            {...entriesApi}
+            unit={settings.unit}
+            height={settings.height}
+            onAdd={() => setIsModalOpen(true)}
+          />
+        )
       case 'stats':
         return <StatsScreen entries={entriesApi.entries} settings={settings} />
       case 'settings':
@@ -42,13 +50,15 @@ function App() {
   }, [tab, entriesApi, settings, updateSettings, resetSettings])
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary">
-      <main className="mx-auto w-full max-w-md px-4 pb-[calc(4rem+env(safe-area-inset-bottom))] pt-4">
-        {activeScreen}
+    <div className="relative min-h-screen bg-bg-primary text-text-primary">
+      <div className="ambient-glow" aria-hidden="true" />
+      <main className="relative z-10 mx-auto w-full max-w-md px-4 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] pt-4">
+        <PageTransition tabKey={tab}>{activeScreen}</PageTransition>
       </main>
       <BottomNav current={tab} onChange={setTab} />
       <AddWeightModal
         isOpen={isModalOpen}
+        unit={settings.unit}
         onClose={() => setIsModalOpen(false)}
         onSave={entriesApi.addEntry}
       />
