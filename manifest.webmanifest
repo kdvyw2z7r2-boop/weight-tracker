@@ -1,0 +1,1 @@
+{"name":"Suivi de poids","short_name":"Poids","description":"Suivi de poids personnel","start_url":"/weight-tracker/","display":"standalone","background_color":"#0A0A0A","theme_color":"#0A0A0A","lang":"en","scope":"/weight-tracker/","orientation":"portrait","icons":[{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml"}]}
