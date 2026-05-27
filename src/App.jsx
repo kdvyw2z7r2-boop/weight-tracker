@@ -95,10 +95,17 @@ function App() {
         isOpen={isPlanModalOpen || shouldAutoOpenPlan}
         onClose={closePlanModal}
         onSave={updateSettings}
-        onRemove={() => updateSettings({ weeklyPace: null, planSetupComplete: true })}
-        startWeight={latest?.weight}
+        onRemove={() =>
+          updateSettings({
+            weeklyPace: null,
+            planSetupComplete: true,
+            planStartDate: null,
+            planStartWeight: null,
+          })
+        }
+        startWeight={settings.planStartWeight ?? latest?.weight}
         targetWeight={settings.targetWeight}
-        startDate={latest?.date}
+        startDate={settings.planStartDate ?? latest?.date}
         weeklyPace={settings.weeklyPace}
         unit={settings.unit}
       />

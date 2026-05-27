@@ -32,7 +32,12 @@ function WeightPlanModal({ isOpen, onClose, onSave, onRemove, startWeight, targe
   const recommendedWidth = ((PACE_RECOMMENDED_MAX - PACE_RECOMMENDED_MIN) / (PACE_MAX - PACE_MIN)) * 100
 
   const handleSave = () => {
-    onSave({ weeklyPace: pace, planSetupComplete: true })
+    onSave({
+      weeklyPace: pace,
+      planSetupComplete: true,
+      planStartDate: startDate,
+      planStartWeight: startWeight,
+    })
     onClose()
   }
 

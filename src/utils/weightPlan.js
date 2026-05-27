@@ -1,10 +1,37 @@
-import { addDays, differenceInCalendarDays, parseISO } from 'date-fns'
+import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns'
 
 export const PACE_MIN = 0.1
 export const PACE_MAX = 0.9
 export const PACE_RECOMMENDED_MIN = 0.25
 export const PACE_RECOMMENDED_MAX = 0.6
 export const DEFAULT_WEEKLY_PACE = 0.4
+
+export function toIsoDate(date) {
+  return format(date, 'yyyy-MM-dd')
+}
+
+export function toChartLabel(isoDate) {
+  if (!isoDate) return ''
+  const [year, month, day] = isoDate.split('-')
+  return `${day}/${month}/${year.slice(2)}`
+}
+
+export function resolvePlanAnchor(settings, entries) {
+  if (settings.planStartDate && settings.planStartWeight != null) {
+    return {
+      startDate: settings.planStartDate,
+      startWeight: settings.planStartWeight,
+    }
+  }
+
+  const latest = entries?.[0]
+  if (!latest) return null
+
+  return {
+    startDate: latest.date,
+    startWeight: latest.weight,
+  }
+}
 
 export function formatWeight(value, unit = 'kg') {
   if (value == null || Number.isNaN(value)) return '—'
@@ -27,24 +54,25 @@ export function computeWeightPlan({ startWeight, targetWeight, weeklyPace, start
   const totalDays = Math.ceil(totalWeeks * 7)
   const start = parseISO(startDate)
   const endDate = addDays(start, totalDays)
+  const endDateIso = toIsoDate(endDate)
 
   const checkpointCount = Math.min(3, Math.max(1, Math.round(totalWeeks / 6)))
   const checkpoints = Array.from({ length: checkpointCount }, (_, index) => {
     const fraction = (index + 1) / (checkpointCount + 1)
     const weight = Number((startWeight - totalLoss * fraction).toFixed(1))
     const days = Math.round(totalDays * fraction)
-    const date = addDays(start, days)
-    return { id: index + 1, weight, date: date.toISOString().slice(0, 10), days, fraction }
+    const date = toIsoDate(addDays(start, days))
+    return { id: index + 1, weight, date, days, fraction, label: toChartLabel(date) }
   })
 
-  const trajectory = buildTrajectory({ startWeight, targetWeight, startDate, endDate, checkpoints })
+  const trajectory = buildTrajectory({ startWeight, targetWeight, startDate, endDateIso, checkpoints })
 
   return {
     startWeight,
     targetWeight,
     weeklyPace,
     startDate,
-    endDate: endDate.toISOString().slice(0, 10),
+    endDate: endDateIso,
     totalWeeks,
     totalDays,
     totalLoss,
@@ -53,11 +81,11 @@ export function computeWeightPlan({ startWeight, targetWeight, weeklyPace, start
   }
 }
 
-function buildTrajectory({ startWeight, targetWeight, startDate, endDate, checkpoints }) {
+function buildTrajectory({ startWeight, targetWeight, startDate, endDateIso, checkpoints }) {
   const milestones = [
     { date: startDate, weight: startWeight, type: 'start' },
     ...checkpoints.map((cp) => ({ date: cp.date, weight: cp.weight, type: 'checkpoint' })),
-    { date: endDate.toISOString().slice(0, 10), weight: targetWeight, type: 'goal' },
+    { date: endDateIso, weight: targetWeight, type: 'goal' },
   ]
 
   const points = []
@@ -68,27 +96,39 @@ function buildTrajectory({ startWeight, targetWeight, startDate, endDate, checkp
     const steps = Math.min(12, Math.max(4, Math.round(segmentDays / 7)))
     for (let step = 0; step <= steps; step += 1) {
       const ratio = step / steps
-      const date = addDays(parseISO(from.date), Math.round(segmentDays * ratio))
+      const date = toIsoDate(addDays(parseISO(from.date), Math.round(segmentDays * ratio)))
       const weight = Number((from.weight + (to.weight - from.weight) * ratio).toFixed(2))
       points.push({
-        date: date.toISOString().slice(0, 10),
+        date,
         weight,
-        label: date.toISOString().slice(5).replace('-', '/'),
+        label: toChartLabel(date),
       })
     }
   }
 
-  const seen = new Set()
-  return points.filter((point) => {
-    if (seen.has(point.date)) return false
-    seen.add(point.date)
-    return true
+  milestones.forEach((milestone) => {
+    if (!points.some((point) => point.date === milestone.date)) {
+      points.push({
+        date: milestone.date,
+        weight: milestone.weight,
+        label: toChartLabel(milestone.date),
+      })
+    }
   })
+
+  const seen = new Set()
+  return points
+    .filter((point) => {
+      if (seen.has(point.date)) return false
+      seen.add(point.date)
+      return true
+    })
+    .sort((a, b) => (a.date > b.date ? 1 : -1))
 }
 
 export function getNextCheckpoint(plan, referenceDate = new Date()) {
   if (!plan?.checkpoints?.length) return null
-  const ref = referenceDate.toISOString().slice(0, 10)
+  const ref = toIsoDate(referenceDate)
   return plan.checkpoints.find((cp) => cp.date >= ref) ?? plan.checkpoints.at(-1)
 }
 
@@ -101,8 +141,8 @@ export function computeWeeklyRates(entries, plan) {
 
   while (weekStart <= parseISO(plan.endDate)) {
     const weekEnd = addDays(weekStart, 6)
-    const weekEndIso = weekEnd.toISOString().slice(0, 10)
-    const weekStartIso = weekStart.toISOString().slice(0, 10)
+    const weekEndIso = toIsoDate(weekEnd)
+    const weekStartIso = toIsoDate(weekStart)
 
     const entriesInWeek = entries.filter((entry) => entry.date >= weekStartIso && entry.date <= weekEndIso)
     const latestInWeek = entriesInWeek[0]

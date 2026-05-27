@@ -13,7 +13,7 @@ import {
   getLowestIn7Days,
   getMonthVariation,
 } from '../utils/stats'
-import { computeWeightPlan, formatPace } from '../utils/weightPlan'
+import { computeWeightPlan, formatPace, resolvePlanAnchor } from '../utils/weightPlan'
 
 const PERIODS = [
   { key: '2w', label: '2 sem.', days: 14 },
@@ -42,14 +42,16 @@ function DashboardScreen({ entries, settings, movingAverage, onAdd, onEditPlan }
   const animatedWeight = useAnimatedNumber(latest?.weight ?? 0, 800)
 
   const weightPlan = useMemo(() => {
-    if (!settings.weeklyPace || !latest) return null
+    if (!settings.weeklyPace) return null
+    const anchor = resolvePlanAnchor(settings, entries)
+    if (!anchor) return null
     return computeWeightPlan({
-      startWeight: latest.weight,
+      startWeight: anchor.startWeight,
       targetWeight: settings.targetWeight,
       weeklyPace: settings.weeklyPace,
-      startDate: latest.date,
+      startDate: anchor.startDate,
     })
-  }, [settings.weeklyPace, settings.targetWeight, latest])
+  }, [settings.weeklyPace, settings.targetWeight, settings.planStartDate, settings.planStartWeight, entries])
 
   const filteredEntriesAsc = useMemo(() => {
     const selected = PERIODS.find((item) => item.key === period)

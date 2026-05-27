@@ -8,6 +8,7 @@ import {
   formatPace,
   formatWeight,
   getNextCheckpoint,
+  resolvePlanAnchor,
 } from '../utils/weightPlan'
 
 function RateCard({ label, value, active = false }) {
@@ -24,14 +25,10 @@ function RateCard({ label, value, active = false }) {
 }
 
 function PlanScreen({ entries, settings, onEditPlan }) {
-  const sortedAsc = useMemo(
-    () => [...entries].sort((a, b) => (a.date > b.date ? 1 : -1)),
-    [entries],
-  )
   const latest = entries[0]
-  const firstEntry = sortedAsc[0]
-  const startWeight = latest?.weight ?? firstEntry?.weight
-  const startDate = latest?.date ?? firstEntry?.date
+  const anchor = resolvePlanAnchor(settings, entries)
+  const startWeight = anchor?.startWeight
+  const startDate = anchor?.startDate
 
   const plan = useMemo(() => {
     if (!settings.weeklyPace || !startWeight || !startDate) return null
@@ -41,7 +38,7 @@ function PlanScreen({ entries, settings, onEditPlan }) {
       weeklyPace: settings.weeklyPace,
       startDate,
     })
-  }, [settings.weeklyPace, settings.targetWeight, startWeight, startDate])
+  }, [settings.weeklyPace, settings.targetWeight, settings.planStartDate, settings.planStartWeight, startWeight, startDate])
 
   const nextCheckpoint = getNextCheckpoint(plan)
   const { currentRate, overallRate } = computeActualRates(entries, startDate)

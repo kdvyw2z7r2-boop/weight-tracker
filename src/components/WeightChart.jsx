@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { toChartLabel } from '../utils/weightPlan'
 
 function CustomTooltip({ active, payload, unit }) {
   if (!active || !payload?.length) return null
@@ -50,7 +51,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
     const historical = data.map((entry) => ({
       ...entry,
       avg: movingAverage.find((item) => item.date === entry.date)?.avg,
-      label: entry.date.slice(5).replace('-', '/'),
+      label: toChartLabel(entry.date),
       projected: null,
       projection: null,
     }))
@@ -64,7 +65,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
         date: point.date,
         weight: null,
         avg: null,
-        label: point.date.slice(5).replace('-', '/'),
+        label: toChartLabel(point.date),
         projected: true,
         projection: point.weight,
       }))
@@ -166,18 +167,15 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
             connectNulls
             animationDuration={900}
           />
-          {plan?.checkpoints?.map((cp) => {
-            const label = cp.date.slice(5).replace('-', '/')
-            return (
-              <ReferenceDot
-                key={cp.id ?? cp.date}
-                x={label}
-                y={cp.weight}
-                shape={<CheckpointMarker />}
-                ifOverflow="extendDomain"
-              />
-            )
-          })}
+          {plan?.checkpoints?.map((cp) => (
+            <ReferenceDot
+              key={cp.id ?? cp.date}
+              x={cp.label ?? toChartLabel(cp.date)}
+              y={cp.weight}
+              shape={<CheckpointMarker />}
+              ifOverflow="extendDomain"
+            />
+          ))}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

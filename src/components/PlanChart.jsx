@@ -9,7 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 import { formatDatePlanShort } from '../utils/locale'
-import { formatWeight } from '../utils/weightPlan'
+import { formatWeight, toChartLabel } from '../utils/weightPlan'
 
 function CheckpointDot({ cx, cy }) {
   if (cx == null || cy == null) return null
@@ -62,7 +62,11 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
   const goalPoint = data.at(-1)
   const checkpointPoints = plan.checkpoints.map((cp) => ({
     ...cp,
-    point: data.find((item) => item.date === cp.date) ?? { date: cp.date, weight: cp.weight, label: cp.date.slice(5).replace('-', '/') },
+    point: data.find((item) => item.date === cp.date) ?? {
+      date: cp.date,
+      weight: cp.weight,
+      label: cp.label ?? toChartLabel(cp.date),
+    },
   }))
 
   return (
@@ -134,7 +138,7 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
             <>
               <ReferenceLine x={goalPoint.label} stroke="#FBBF24" strokeOpacity={0.35} />
               <ReferenceDot
-                x={goalPoint.label}
+                x={goalPoint.label ?? toChartLabel(plan.endDate)}
                 y={goalPoint.weight}
                 shape={<GoalDot />}
                 label={

@@ -11,6 +11,8 @@ const defaultSettings = {
   theme: 'dark',
   weeklyPace: null,
   planSetupComplete: false,
+  planStartDate: null,
+  planStartWeight: null,
 }
 
 function useSettings() {
