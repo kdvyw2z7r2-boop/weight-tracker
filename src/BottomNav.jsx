@@ -7,7 +7,7 @@ const tabs = [
 
 function BottomNav({ current, onChange }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-bg-card">
+    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-bg-card pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto grid h-16 w-full max-w-md grid-cols-4">
         {tabs.map((tab) => (
           <button

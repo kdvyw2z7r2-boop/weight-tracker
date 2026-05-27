@@ -43,7 +43,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary">
-      <main className="mx-auto w-full max-w-md px-4 pb-24 pt-4">{activeScreen}</main>
+      <main className="mx-auto w-full max-w-md px-4 pb-[calc(4rem+env(safe-area-inset-bottom))] pt-4">
+        {activeScreen}
+      </main>
       <BottomNav current={tab} onChange={setTab} />
       <AddWeightModal
         isOpen={isModalOpen}
