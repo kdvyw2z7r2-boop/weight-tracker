@@ -7,28 +7,17 @@ function AddWeightModal({ isOpen, onClose, onSave, unit = 'kg', initial = null }
   const [note, setNote] = useState(initial?.note ?? '')
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const [render, setRender] = useState(false)
-  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (isOpen) {
-      setRender(true)
-      document.body.style.overflow = 'hidden'
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setVisible(true))
-      })
-    } else {
-      setVisible(false)
-      document.body.style.overflow = ''
-      const timer = setTimeout(() => setRender(false), 380)
-      return () => clearTimeout(timer)
-    }
+    if (!isOpen) return undefined
+
+    document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = ''
     }
   }, [isOpen])
 
-  if (!render) return null
+  if (!isOpen) return null
 
   const handleClose = () => {
     if (!isSaving) onClose()
@@ -64,15 +53,11 @@ function AddWeightModal({ isOpen, onClose, onSave, unit = 'kg', initial = null }
         type="button"
         aria-label="Fermer"
         onClick={handleClose}
-        className={`absolute inset-0 bg-black/75 backdrop-blur-sm transition-opacity duration-300 ${
-          visible ? 'opacity-100' : 'opacity-0'
-        }`}
+        className="animate-modal-overlay absolute inset-0 bg-black/75 backdrop-blur-sm"
       />
       <form
         onSubmit={handleSubmit}
-        className={`relative w-full max-w-md rounded-t-[24px] border-t border-border bg-bg-card px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.5)] transition-transform duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${
-          visible ? 'translate-y-0' : 'translate-y-full'
-        }`}
+        className="animate-modal-sheet relative w-full max-w-md rounded-t-[24px] border-t border-border bg-bg-card px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.5)]"
       >
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-bg-elevated" aria-hidden="true" />
         <h2 className="text-center text-lg font-semibold">Nouvelle pesée</h2>
