@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 
 const API_ENDPOINT = '/api/weights'
 const LEGACY_ENTRIES_KEY = 'wt_entries'
+const USER_ENTRIES_PREFIX = 'wt_entries:'
 
 const kgToLbs = (kg) => kg * 2.20462
 const lbsToKg = (lbs) => lbs / 2.20462
@@ -11,8 +12,8 @@ const round = (value) => Math.round(value * 100) / 100
 const sortByDateDesc = (items) =>
   [...items].sort((a, b) => (a.date < b.date ? 1 : -1))
 
-const networkErrorMessage =
-  'Impossible de synchroniser vos données. Vérifiez votre connexion puis réessayez.'
+const localFallbackMessage =
+  'Mode local activé : impossible de joindre le stockage cloud pour le moment.'
 
 function normalizeEntries(items) {
   if (!Array.isArray(items)) return []
@@ -29,21 +30,47 @@ function normalizeEntries(items) {
   )
 }
 
-function readLegacyEntries() {
+function getLocalEntriesKey(userId) {
+  return `${USER_ENTRIES_PREFIX}${userId}`
+}
+
+function readEntriesFromStorage(key) {
   try {
-    const raw = window.localStorage.getItem(LEGACY_ENTRIES_KEY)
+    const raw = window.localStorage.getItem(key)
     return raw ? normalizeEntries(JSON.parse(raw)) : []
   } catch {
     return []
   }
 }
 
-function clearLegacyEntries() {
+function writeEntriesToStorage(key, entries) {
   try {
-    window.localStorage.removeItem(LEGACY_ENTRIES_KEY)
+    window.localStorage.setItem(key, JSON.stringify(normalizeEntries(entries)))
   } catch {
-    // Local storage is only used here for one-time legacy migration.
+    // Local fallback is best-effort only.
   }
+}
+
+function removeEntriesFromStorage(key) {
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // Local fallback is best-effort only.
+  }
+}
+
+function readLocalFallbackEntries(userId) {
+  const userEntries = readEntriesFromStorage(getLocalEntriesKey(userId))
+  if (userEntries.length > 0) return userEntries
+  return readEntriesFromStorage(LEGACY_ENTRIES_KEY)
+}
+
+function storeLocalFallbackEntries(userId, entries) {
+  writeEntriesToStorage(getLocalEntriesKey(userId), entries)
+}
+
+function clearLegacyEntries() {
+  removeEntriesFromStorage(LEGACY_ENTRIES_KEY)
 }
 
 async function fetchWeights(userId) {
@@ -88,6 +115,7 @@ function useEntries(unit = 'kg', userId) {
   const [isLoading, setIsLoading] = useState(Boolean(userId))
   const [hasLoaded, setHasLoaded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [storageMode, setStorageMode] = useState('cloud')
   const [error, setError] = useState('')
 
   const loadEntries = useCallback(async () => {
@@ -97,21 +125,26 @@ function useEntries(unit = 'kg', userId) {
     setHasLoaded(false)
     setError('')
 
-    try {
-      let nextEntries = await fetchWeights(userId)
-      const legacyEntries = nextEntries.length === 0 ? readLegacyEntries() : []
+    const localEntries = readLocalFallbackEntries(userId)
 
-      if (legacyEntries.length > 0) {
-        await saveWeights(userId, legacyEntries)
+    try {
+      const cloudEntries = await fetchWeights(userId)
+      const nextEntries = cloudEntries.length > 0 ? cloudEntries : localEntries
+
+      if (cloudEntries.length === 0 && localEntries.length > 0) {
+        await saveWeights(userId, localEntries)
         clearLegacyEntries()
-        nextEntries = legacyEntries
       }
 
+      storeLocalFallbackEntries(userId, nextEntries)
       setEntries(normalizeEntries(nextEntries))
+      setStorageMode('cloud')
       setHasLoaded(true)
     } catch {
-      setError(networkErrorMessage)
-      setHasLoaded(false)
+      setEntries(normalizeEntries(localEntries))
+      setStorageMode('local')
+      setError(localFallbackMessage)
+      setHasLoaded(true)
     } finally {
       setIsLoading(false)
     }
@@ -126,46 +159,49 @@ function useEntries(unit = 'kg', userId) {
   }, [loadEntries])
 
   const persist = useCallback(
-    async (nextEntries, rollbackEntries = entries) => {
+    async (nextEntries) => {
       if (!userId) {
-        setError(networkErrorMessage)
-        throw new Error('Missing user id')
+        setStorageMode('local')
+        setError(localFallbackMessage)
+        return normalizeEntries(nextEntries)
       }
 
       const sortedNextEntries = normalizeEntries(nextEntries)
       setEntries(sortedNextEntries)
+      storeLocalFallbackEntries(userId, sortedNextEntries)
       setIsSaving(true)
       setError('')
 
       try {
         await saveWeights(userId, sortedNextEntries)
         clearLegacyEntries()
-        return sortedNextEntries
+        setStorageMode('cloud')
       } catch {
-        setEntries(normalizeEntries(rollbackEntries))
-        setError(networkErrorMessage)
-        throw new Error('Unable to save weights')
+        setStorageMode('local')
+        setError(localFallbackMessage)
       } finally {
         setIsSaving(false)
       }
+
+      return sortedNextEntries
     },
-    [entries, userId],
+    [userId],
   )
 
   const addEntry = useCallback(async (entry) => {
-    return persist([...entries, createEntry(entry)], entries)
+    return persist([...entries, createEntry(entry)])
   }, [entries, persist])
 
   const updateEntry = useCallback(async (id, data) => {
     const next = entries.map((entry) =>
       entry.id === id ? { ...entry, ...data, weight: Number(data.weight ?? entry.weight) } : entry,
     )
-    return persist(next, entries)
+    return persist(next)
   }, [entries, persist])
 
   const deleteEntry = useCallback(async (id) => {
     const next = entries.filter((entry) => entry.id !== id)
-    return persist(next, entries)
+    return persist(next)
   }, [entries, persist])
 
   const getMovingAverage = useCallback((windowSize = 7) => {
@@ -206,9 +242,9 @@ function useEntries(unit = 'kg', userId) {
     if (!Array.isArray(parsed.entries)) {
       throw new Error('Invalid backup format')
     }
-    await persist(parsed.entries, entries)
+    await persist(parsed.entries)
     return parsed
-  }, [entries, persist])
+  }, [persist])
 
   const convertAllUnits = useCallback(async (nextUnit) => {
     if (nextUnit === unit) return
@@ -216,12 +252,12 @@ function useEntries(unit = 'kg', userId) {
       ...entry,
       weight: round(nextUnit === 'lbs' ? kgToLbs(entry.weight) : lbsToKg(entry.weight)),
     }))
-    await persist(next, entries)
+    await persist(next)
   }, [entries, persist, unit])
 
   const clearEntries = useCallback(async () => {
-    await persist([], entries)
-  }, [entries, persist])
+    await persist([])
+  }, [persist])
 
   return useMemo(() => ({
     entries,
@@ -229,6 +265,7 @@ function useEntries(unit = 'kg', userId) {
     isLoading,
     hasLoaded,
     isSaving,
+    storageMode,
     error,
     reload: loadEntries,
     addEntry,
@@ -246,6 +283,7 @@ function useEntries(unit = 'kg', userId) {
     isLoading,
     hasLoaded,
     isSaving,
+    storageMode,
     error,
     loadEntries,
     addEntry,
