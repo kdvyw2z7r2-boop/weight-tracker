@@ -52,7 +52,7 @@ function AddWeightModal({ isOpen, onClose, onSave, unit = 'kg', initial = null }
       setNote('')
       onClose()
     } catch {
-      setError('Impossible d'enregistrer pour le moment. Réessaie dans quelques secondes.')
+      setError("Impossible d'enregistrer pour le moment. Réessaie dans quelques secondes.")
     } finally {
       setIsSaving(false)
     }

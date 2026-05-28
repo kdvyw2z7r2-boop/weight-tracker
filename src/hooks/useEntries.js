@@ -118,7 +118,11 @@ function useEntries(unit = 'kg', userId) {
   }, [userId])
 
   useEffect(() => {
-    loadEntries()
+    const timeoutId = window.setTimeout(() => {
+      loadEntries()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [loadEntries])
 
   const persist = useCallback(
