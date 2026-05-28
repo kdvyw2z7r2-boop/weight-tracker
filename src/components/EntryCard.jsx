@@ -4,6 +4,7 @@ import { getBmi } from '../utils/stats'
 
 function EntryCard({ entry, previous, onDelete, unit = 'kg', height = 0, index = 0 }) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const delta = previous ? entry.weight - previous.weight : null
   const bmi = getBmi(entry.weight, height)
   const deltaBadgeClass =
@@ -13,6 +14,18 @@ function EntryCard({ entry, previous, onDelete, unit = 'kg', height = 0, index =
         ? 'bg-accent-green/15 text-accent-green'
         : 'bg-accent-red/15 text-accent-red'
 
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await onDelete(entry.id)
+      setIsConfirmingDelete(false)
+    } catch {
+      alert('Impossible de supprimer cette entrée pour le moment.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <article
       className="press-card animate-fade-up relative rounded-2xl border border-border bg-bg-card px-5 py-4"
@@ -21,8 +34,9 @@ function EntryCard({ entry, previous, onDelete, unit = 'kg', height = 0, index =
       <button
         type="button"
         onClick={() => setIsConfirmingDelete(true)}
-        className="press-button absolute right-4 top-4 text-text-tertiary transition duration-150 hover:text-text-secondary"
+        className="press-button absolute right-4 top-4 text-text-tertiary transition duration-150 hover:text-text-secondary disabled:opacity-50"
         aria-label="Supprimer l'entrée"
+        disabled={isDeleting}
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none" stroke="currentColor" strokeWidth="1.75">
           <path d="M3 6h18" />
@@ -59,18 +73,17 @@ function EntryCard({ entry, previous, onDelete, unit = 'kg', height = 0, index =
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => {
-                onDelete(entry.id)
-                setIsConfirmingDelete(false)
-              }}
-              className="press-button rounded-lg bg-accent-red px-3 py-1.5 font-medium text-white"
+              onClick={handleDelete}
+              className="press-button rounded-lg bg-accent-red px-3 py-1.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isDeleting}
             >
-              Oui
+              {isDeleting ? '...' : 'Oui'}
             </button>
             <button
               type="button"
               onClick={() => setIsConfirmingDelete(false)}
-              className="press-button rounded-lg px-3 py-1.5 text-text-secondary"
+              className="press-button rounded-lg px-3 py-1.5 text-text-secondary disabled:opacity-60"
+              disabled={isDeleting}
             >
               Non
             </button>

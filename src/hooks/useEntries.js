@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 
-const ENTRIES_KEY = 'wt_entries'
+const API_ENDPOINT = '/api/weights'
+const LEGACY_ENTRIES_KEY = 'wt_entries'
 
 const kgToLbs = (kg) => kg * 2.20462
 const lbsToKg = (lbs) => lbs / 2.20462
@@ -10,62 +11,173 @@ const round = (value) => Math.round(value * 100) / 100
 const sortByDateDesc = (items) =>
   [...items].sort((a, b) => (a.date < b.date ? 1 : -1))
 
-function useEntries(unit = 'kg') {
-  const [entries, setEntries] = useState(() => {
-    const raw = localStorage.getItem(ENTRIES_KEY)
-    if (!raw) return []
-    try {
-      const parsed = JSON.parse(raw)
-      return sortByDateDesc(parsed)
-    } catch {
-      return []
-    }
+const networkErrorMessage =
+  'Impossible de synchroniser vos données. Vérifiez votre connexion puis réessayez.'
+
+function normalizeEntries(items) {
+  if (!Array.isArray(items)) return []
+
+  return sortByDateDesc(
+    items
+      .filter((entry) => entry && entry.id && entry.date && Number.isFinite(Number(entry.weight)))
+      .map((entry) => ({
+        ...entry,
+        weight: Number(entry.weight),
+        note: entry.note ?? '',
+        createdAt: entry.createdAt ?? Date.now(),
+      })),
+  )
+}
+
+function readLegacyEntries() {
+  try {
+    const raw = window.localStorage.getItem(LEGACY_ENTRIES_KEY)
+    return raw ? normalizeEntries(JSON.parse(raw)) : []
+  } catch {
+    return []
+  }
+}
+
+function clearLegacyEntries() {
+  try {
+    window.localStorage.removeItem(LEGACY_ENTRIES_KEY)
+  } catch {
+    // Local storage is only used here for one-time legacy migration.
+  }
+}
+
+async function fetchWeights(userId) {
+  const response = await fetch(`${API_ENDPOINT}?userId=${encodeURIComponent(userId)}`, {
+    headers: { Accept: 'application/json' },
   })
 
-  const persist = (nextEntries) => {
-    localStorage.setItem(ENTRIES_KEY, JSON.stringify(nextEntries))
-    setEntries(sortByDateDesc(nextEntries))
+  if (!response.ok) {
+    throw new Error('Unable to load weights')
   }
 
-  const addEntry = (entry) => {
-    const next = [
-      ...entries,
-      {
-        id: crypto.randomUUID(),
-        date: entry.date ?? format(new Date(), 'yyyy-MM-dd'),
-        weight: Number(entry.weight),
-        note: entry.note?.trim() ?? '',
-        createdAt: Date.now(),
-      },
-    ]
-    persist(next)
-    return next
-  }
+  return normalizeEntries(await response.json())
+}
 
-  const updateEntry = (id, data) => {
+async function saveWeights(userId, weights) {
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ userId, weights }),
+  })
+
+  if (!response.ok) {
+    throw new Error('Unable to save weights')
+  }
+}
+
+function createEntry(entry) {
+  return {
+    id: crypto.randomUUID(),
+    date: entry.date ?? format(new Date(), 'yyyy-MM-dd'),
+    weight: Number(entry.weight),
+    note: entry.note?.trim() ?? '',
+    createdAt: Date.now(),
+  }
+}
+
+function useEntries(unit = 'kg', userId) {
+  const [entries, setEntries] = useState([])
+  const [isLoading, setIsLoading] = useState(Boolean(userId))
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const loadEntries = useCallback(async () => {
+    if (!userId) return
+
+    setIsLoading(true)
+    setHasLoaded(false)
+    setError('')
+
+    try {
+      let nextEntries = await fetchWeights(userId)
+      const legacyEntries = nextEntries.length === 0 ? readLegacyEntries() : []
+
+      if (legacyEntries.length > 0) {
+        await saveWeights(userId, legacyEntries)
+        clearLegacyEntries()
+        nextEntries = legacyEntries
+      }
+
+      setEntries(normalizeEntries(nextEntries))
+      setHasLoaded(true)
+    } catch {
+      setError(networkErrorMessage)
+      setHasLoaded(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [userId])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      loadEntries()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [loadEntries])
+
+  const persist = useCallback(
+    async (nextEntries, rollbackEntries = entries) => {
+      if (!userId) {
+        setError(networkErrorMessage)
+        throw new Error('Missing user id')
+      }
+
+      const sortedNextEntries = normalizeEntries(nextEntries)
+      setEntries(sortedNextEntries)
+      setIsSaving(true)
+      setError('')
+
+      try {
+        await saveWeights(userId, sortedNextEntries)
+        clearLegacyEntries()
+        return sortedNextEntries
+      } catch {
+        setEntries(normalizeEntries(rollbackEntries))
+        setError(networkErrorMessage)
+        throw new Error('Unable to save weights')
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [entries, userId],
+  )
+
+  const addEntry = useCallback(async (entry) => {
+    return persist([...entries, createEntry(entry)], entries)
+  }, [entries, persist])
+
+  const updateEntry = useCallback(async (id, data) => {
     const next = entries.map((entry) =>
       entry.id === id ? { ...entry, ...data, weight: Number(data.weight ?? entry.weight) } : entry,
     )
-    persist(next)
-    return next
-  }
+    return persist(next, entries)
+  }, [entries, persist])
 
-  const deleteEntry = (id) => {
+  const deleteEntry = useCallback(async (id) => {
     const next = entries.filter((entry) => entry.id !== id)
-    persist(next)
-    return next
-  }
+    return persist(next, entries)
+  }, [entries, persist])
 
-  const getMovingAverage = (windowSize = 7) => {
+  const getMovingAverage = useCallback((windowSize = 7) => {
     const asc = [...entries].reverse()
     return asc.map((entry, i) => {
       const window = asc.slice(Math.max(0, i - windowSize + 1), i + 1)
       const avg = window.reduce((sum, item) => sum + item.weight, 0) / window.length
       return { date: entry.date, avg: round(avg) }
     })
-  }
+  }, [entries])
 
-  const exportCSV = () => {
+  const exportCSV = useCallback(() => {
     const lines = ['date,weight,note,createdAt']
     entries.forEach((entry) => {
       lines.push(`${entry.date},${entry.weight},"${entry.note ?? ''}",${entry.createdAt}`)
@@ -76,9 +188,9 @@ function useEntries(unit = 'kg') {
     a.download = `weight-tracker-${Date.now()}.csv`
     a.click()
     URL.revokeObjectURL(a.href)
-  }
+  }, [entries])
 
-  const exportJSON = (settings) => {
+  const exportJSON = useCallback((settings) => {
     const payload = { entries, settings, exportedAt: new Date().toISOString() }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const a = document.createElement('a')
@@ -86,29 +198,39 @@ function useEntries(unit = 'kg') {
     a.download = `weight-tracker-backup-${Date.now()}.json`
     a.click()
     URL.revokeObjectURL(a.href)
-  }
+  }, [entries])
 
-  const importJSON = async (file) => {
+  const importJSON = useCallback(async (file) => {
     const text = await file.text()
     const parsed = JSON.parse(text)
     if (!Array.isArray(parsed.entries)) {
       throw new Error('Invalid backup format')
     }
-    persist(parsed.entries)
+    await persist(parsed.entries, entries)
     return parsed
-  }
+  }, [entries, persist])
 
-  const convertAllUnits = (nextUnit) => {
+  const convertAllUnits = useCallback(async (nextUnit) => {
     if (nextUnit === unit) return
     const next = entries.map((entry) => ({
       ...entry,
       weight: round(nextUnit === 'lbs' ? kgToLbs(entry.weight) : lbsToKg(entry.weight)),
     }))
-    persist(next)
-  }
+    await persist(next, entries)
+  }, [entries, persist, unit])
 
-  return {
+  const clearEntries = useCallback(async () => {
+    await persist([], entries)
+  }, [entries, persist])
+
+  return useMemo(() => ({
     entries,
+    userId,
+    isLoading,
+    hasLoaded,
+    isSaving,
+    error,
+    reload: loadEntries,
     addEntry,
     updateEntry,
     deleteEntry,
@@ -117,7 +239,25 @@ function useEntries(unit = 'kg') {
     exportJSON,
     importJSON,
     convertAllUnits,
-  }
+    clearEntries,
+  }), [
+    entries,
+    userId,
+    isLoading,
+    hasLoaded,
+    isSaving,
+    error,
+    loadEntries,
+    addEntry,
+    updateEntry,
+    deleteEntry,
+    getMovingAverage,
+    exportCSV,
+    exportJSON,
+    importJSON,
+    convertAllUnits,
+    clearEntries,
+  ])
 }
 
 export default useEntries

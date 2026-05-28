@@ -23,10 +23,14 @@ function IOSSwitch({ checked, onChange, label }) {
 }
 
 function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, onEditPlan }) {
-  const onUnitChange = (nextUnit) => {
-    if (nextUnit !== settings.unit) {
-      entriesApi.convertAllUnits(nextUnit)
+  const onUnitChange = async (nextUnit) => {
+    if (nextUnit === settings.unit) return
+
+    try {
+      await entriesApi.convertAllUnits(nextUnit)
       updateSettings({ unit: nextUnit })
+    } catch {
+      alert('Impossible de convertir les données pour le moment.')
     }
   }
 
@@ -175,11 +179,14 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
         <p className="section-label mb-3">Zone de danger</p>
         <button
           type="button"
-          onClick={() => {
-            if (window.confirm('Effacer toutes les données ? Cette action est irréversible.')) {
-              localStorage.removeItem('wt_entries')
+          onClick={async () => {
+            if (!window.confirm('Effacer toutes les données ? Cette action est irréversible.')) return
+
+            try {
+              await entriesApi.clearEntries()
               resetSettings()
-              window.location.reload()
+            } catch {
+              alert("Impossible d'effacer les données pour le moment.")
             }
           }}
           className="press-button h-12 w-full rounded-xl border border-accent-red text-base font-medium text-accent-red transition duration-200"
