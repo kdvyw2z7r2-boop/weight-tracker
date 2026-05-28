@@ -6,6 +6,7 @@ function AddWeightModal({ isOpen, onClose, onSave, unit = 'kg', initial = null }
   const [date, setDate] = useState(initial?.date ?? format(new Date(), 'yyyy-MM-dd'))
   const [note, setNote] = useState(initial?.note ?? '')
   const [error, setError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
   const [render, setRender] = useState(false)
   const [visible, setVisible] = useState(false)
 
@@ -29,21 +30,32 @@ function AddWeightModal({ isOpen, onClose, onSave, unit = 'kg', initial = null }
 
   if (!render) return null
 
-  const handleClose = () => onClose()
+  const handleClose = () => {
+    if (!isSaving) onClose()
+  }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     const parsedWeight = Number(weight)
     if (Number.isNaN(parsedWeight) || parsedWeight < 30 || parsedWeight > 300) {
       setError('Le poids doit être entre 30 et 300.')
       return
     }
-    onSave({ weight: parsedWeight, date, note })
-    setWeight('')
-    setDate(format(new Date(), 'yyyy-MM-dd'))
-    setNote('')
+
+    setIsSaving(true)
     setError('')
-    onClose()
+
+    try {
+      await onSave({ weight: parsedWeight, date, note })
+      setWeight('')
+      setDate(format(new Date(), 'yyyy-MM-dd'))
+      setNote('')
+      onClose()
+    } catch {
+      setError('Impossible d'enregistrer pour le moment. Réessaie dans quelques secondes.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -73,9 +85,10 @@ function AddWeightModal({ isOpen, onClose, onSave, unit = 'kg', initial = null }
             inputMode="decimal"
             step="0.01"
             placeholder="0,0"
-            className="w-full border-b border-border bg-transparent py-2 text-center text-[48px] font-bold leading-none text-white outline-none transition-colors duration-200 placeholder:text-text-tertiary focus:border-white/30"
+            className="w-full border-b border-border bg-transparent py-2 text-center text-[48px] font-bold leading-none text-white outline-none transition-colors duration-200 placeholder:text-text-tertiary focus:border-white/30 disabled:opacity-60"
             required
             autoFocus
+            disabled={isSaving}
           />
           <p className="mt-2 text-center text-[13px] text-text-tertiary">{unit}</p>
         </div>
@@ -87,8 +100,9 @@ function AddWeightModal({ isOpen, onClose, onSave, unit = 'kg', initial = null }
               value={date}
               onChange={(event) => setDate(event.target.value)}
               type="date"
-              className="h-12 w-full rounded-xl border border-transparent bg-bg-elevated px-4 text-[15px] text-white outline-none transition duration-200 focus:border-white/20"
+              className="h-12 w-full rounded-xl border border-transparent bg-bg-elevated px-4 text-[15px] text-white outline-none transition duration-200 focus:border-white/20 disabled:opacity-60"
               required
+              disabled={isSaving}
             />
           </div>
           <div>
@@ -97,15 +111,20 @@ function AddWeightModal({ isOpen, onClose, onSave, unit = 'kg', initial = null }
               value={note}
               onChange={(event) => setNote(event.target.value.slice(0, 200))}
               placeholder="Ajouter une note (optionnel)"
-              className="h-24 w-full resize-none rounded-xl border border-transparent bg-bg-elevated px-4 py-3 text-[15px] leading-relaxed text-white outline-none transition duration-200 placeholder:text-text-tertiary focus:border-white/20"
+              className="h-24 w-full resize-none rounded-xl border border-transparent bg-bg-elevated px-4 py-3 text-[15px] leading-relaxed text-white outline-none transition duration-200 placeholder:text-text-tertiary focus:border-white/20 disabled:opacity-60"
+              disabled={isSaving}
             />
           </div>
         </div>
 
         {error ? <p className="mt-3 text-sm text-accent-red">{error}</p> : null}
 
-        <button type="submit" className="btn-primary mt-6 h-[52px] w-full rounded-[14px] text-base font-medium">
-          Enregistrer
+        <button
+          type="submit"
+          className="btn-primary mt-6 h-[52px] w-full rounded-[14px] text-base font-medium disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isSaving}
+        >
+          {isSaving ? 'Synchronisation...' : 'Enregistrer'}
         </button>
       </form>
     </div>
