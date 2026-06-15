@@ -561,7 +561,8 @@ function useSync(userId) {
   )
 
   const addEntry = useCallback(
-    async (entry, photoBlob = null) => {
+    async (entry, photoBlobArg = null) => {
+      const photoBlob = photoBlobArg ?? entry.photoBlob ?? null
       const photoRequired = Boolean(db)
 
       if (photoRequired && !photoBlob && !photosByDate[entry.date]?.storagePath) {
