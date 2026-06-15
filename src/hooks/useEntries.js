@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { createSupabaseClient, isSupabaseConfigured } from '../lib/supabase'
 
 const SUPABASE_TABLE = 'weight_histories'
 const LEGACY_ENTRIES_KEY = 'wt_entries'
@@ -75,6 +75,7 @@ function clearLegacyEntries() {
 }
 
 async function fetchWeights(userId) {
+  const supabase = createSupabaseClient(userId)
   if (!supabase) throw new Error('Supabase is not configured')
 
   const { data, error } = await supabase
@@ -88,6 +89,7 @@ async function fetchWeights(userId) {
 }
 
 async function saveWeights(userId, weights) {
+  const supabase = createSupabaseClient(userId)
   if (!supabase) throw new Error('Supabase is not configured')
 
   const { error } = await supabase.from(SUPABASE_TABLE).upsert(
