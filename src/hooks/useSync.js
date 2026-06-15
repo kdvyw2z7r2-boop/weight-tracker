@@ -33,6 +33,9 @@ const sortByDateDesc = (items) =>
 const localFallbackMessage =
   'Mode local : impossible de joindre le cloud pour le moment. Vos données restent sur cet appareil.'
 
+const missingSupabaseEnvMessage =
+  'Supabase non configuré au build. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sur Vercel, puis redéployez.'
+
 const photoUnavailableMessage =
   'Les photos nécessitent Supabase. Configurez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.'
 
@@ -427,7 +430,7 @@ function useSync(userId) {
       setPhotosByDate(localPhotos)
       setStorageMode('cloud')
       setHasLoaded(true)
-    } catch {
+    } catch (loadError) {
       storeLocalEntries(userId, localEntries)
       storeLocalSettings(userId, localSettings)
       storeLocalPhotos(userId, localPhotos)
@@ -435,8 +438,9 @@ function useSync(userId) {
       setSettings(localSettings)
       setPhotosByDate(localPhotos)
       setStorageMode('local')
-      setError(localFallbackMessage)
+      setError(db ? localFallbackMessage : missingSupabaseEnvMessage)
       setHasLoaded(true)
+      console.error('Cloud sync failed:', loadError)
     } finally {
       setIsLoading(false)
     }
