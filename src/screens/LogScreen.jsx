@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import EntryCard from '../components/EntryCard'
 import { formatMonthYear } from '../utils/locale'
 
-function LogScreen({ entries, deleteEntry, onAdd, onPhotoPress, hasPhotoForDate, unit, height }) {
+function LogScreen({ entries, deleteEntry, onAdd, onPhotoPress, hasPhotoForDate, unit }) {
   const grouped = useMemo(() => {
     return entries.reduce((acc, entry) => {
       const month = entry.date.slice(0, 7)
@@ -49,7 +49,6 @@ function LogScreen({ entries, deleteEntry, onAdd, onPhotoPress, hasPhotoForDate,
                 onPhotoPress={onPhotoPress}
                 hasPhoto={hasPhotoForDate?.(entry.date)}
                 unit={unit}
-                height={height}
                 index={index}
               />
             ))}

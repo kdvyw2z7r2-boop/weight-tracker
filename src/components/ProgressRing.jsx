@@ -66,7 +66,7 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
       </div>
 
       <div className="min-w-0 flex-1 text-right text-[13px] leading-snug text-text-tertiary">
-        <p className="section-label !normal-case !tracking-normal !text-[11px]">Objectif 🏆</p>
+        <p className="section-label !normal-case !tracking-normal !text-[11px]">Objectif</p>
         <p className="mt-1.5 text-[15px] font-medium text-text-primary">
           {targetWeight} {unit}
         </p>

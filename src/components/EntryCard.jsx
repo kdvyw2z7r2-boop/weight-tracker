@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { formatDateEntry } from '../utils/locale'
-import { getBmi } from '../utils/stats'
 
 function CameraIcon({ active = false }) {
   return (
@@ -26,12 +25,10 @@ function EntryCard({
   onPhotoPress,
   hasPhoto = false,
   unit = 'kg',
-  height = 0,
   index = 0,
 }) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const delta = previous ? entry.weight - previous.weight : null
-  const bmi = getBmi(entry.weight, height)
   const deltaBadgeClass =
     delta === null
       ? 'bg-bg-elevated text-text-tertiary'
@@ -83,9 +80,6 @@ function EntryCard({
               ? '—'
               : `${delta > 0 ? '+' : ''}${delta.toFixed(1).replace('.', ',')} ${unit}`}
           </span>
-          <p className="mt-1.5 text-[13px] text-text-tertiary">
-            IMC {bmi ? bmi.toFixed(1).replace('.', ',') : '—'}
-          </p>
         </div>
       </div>
 
