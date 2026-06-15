@@ -1,40 +1,47 @@
-# React + Vite
+# Weight Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Application PWA de suivi de poids avec photos d'évolution, hébergée sur **Vercel** et synchronisée via **Supabase**.
 
-Currently, two official plugins are available:
+## Déploiement Vercel
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### 1. Variables d'environnement (obligatoire)
 
-## React Compiler
+Dans [Vercel](https://vercel.com) → projet **weight-tracker** → **Settings** → **Environment Variables**, ajoute :
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Variable | Où la trouver |
+|----------|---------------|
+| `VITE_SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase → Project Settings → API → anon public |
 
-## Expanding the ESLint configuration
+Coche **Production** (et Preview si tu veux). Puis **Deployments → Redeploy** (obligatoire : Vite injecte ces vars au build).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Via CLI :
 
-## Stockage cloud Supabase
+```bash
+vercel env add VITE_SUPABASE_URL production
+vercel env add VITE_SUPABASE_ANON_KEY production
+vercel --prod
+```
 
-L'application peut rester hébergée sur GitHub Pages. Le stockage cloud des poids passe par Supabase depuis le frontend, avec un fallback local si Supabase n'est pas encore configuré ou indisponible.
+### 2. Schéma Supabase
 
-### 1. Créer la table
+Dans Supabase → **SQL Editor**, exécute tout le fichier `supabase/schema.sql` puis **Run**.
 
-Dans Supabase, ouvre le SQL editor et exécute `supabase/schema.sql`.
+Tables créées : `entries`, `user_settings`, `daily_photos` + bucket Storage `progress-photos`.
 
-La table utilisée est `public.weight_histories` : une ligne par utilisateur anonyme, avec `user_id` et un tableau JSON `weights`.
+### 3. URL de prod
 
-### 2. Ajouter les variables GitHub Pages
+https://weight-tracker-steel-eight.vercel.app
 
-Dans GitHub > Settings > Secrets and variables > Actions, ajoute :
+## Sécurité du lien
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+Pas de compte utilisateur : le paramètre `?id=user_...` agit comme clé privée. Ne partage pas ton lien personnel.
 
-Ces valeurs sont publiques côté frontend, mais elles doivent être présentes au build Vite. Si elles manquent, l'app reste utilisable en mode local.
+## Dev local
 
-### 3. Sécurité du lien
-
-Il n'y a pas de compte utilisateur. Le paramètre `?id=user_...` agit comme un lien privé : ne partage pas ton lien personnel, partage l'URL sans `?id=` pour que chacun reçoive son propre identifiant.
-
+```bash
+cp .env.example .env.local
+# Remplis VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY
+npm install
+npm run dev
+```

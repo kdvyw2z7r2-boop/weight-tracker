@@ -33,8 +33,19 @@ const sortByDateDesc = (items) =>
 const localFallbackMessage =
   'Mode local : impossible de joindre le cloud pour le moment. Vos données restent sur cet appareil.'
 
+const missingSupabaseEnvMessage =
+  'Supabase non configuré au build. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sur Vercel, puis redéployez.'
+
 const photoUnavailableMessage =
   'Les photos nécessitent Supabase. Configurez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.'
+
+function formatStorageError(error) {
+  const message = error?.message ?? ''
+  if (/bucket not found/i.test(message)) {
+    return 'Bucket Storage « progress-photos » introuvable. Créez-le dans Supabase (Storage) ou exécutez supabase/storage.sql.'
+  }
+  return message || 'Impossible d’enregistrer la photo.'
+}
 
 function normalizeEntries(items) {
   if (!Array.isArray(items)) return []
@@ -292,7 +303,9 @@ async function uploadPhotoToSupabase(db, userId, date, blob) {
     cacheControl: '3600',
   })
 
-  if (uploadError) throw uploadError
+  if (uploadError) {
+    throw new Error(formatStorageError(uploadError))
+  }
 
   const { error: metaError } = await db.from('daily_photos').upsert({
     user_id: userId,
@@ -427,7 +440,7 @@ function useSync(userId) {
       setPhotosByDate(localPhotos)
       setStorageMode('cloud')
       setHasLoaded(true)
-    } catch {
+    } catch (loadError) {
       storeLocalEntries(userId, localEntries)
       storeLocalSettings(userId, localSettings)
       storeLocalPhotos(userId, localPhotos)
@@ -435,8 +448,9 @@ function useSync(userId) {
       setSettings(localSettings)
       setPhotosByDate(localPhotos)
       setStorageMode('local')
-      setError(localFallbackMessage)
+      setError(db ? localFallbackMessage : missingSupabaseEnvMessage)
       setHasLoaded(true)
+      console.error('Cloud sync failed:', loadError)
     } finally {
       setIsLoading(false)
     }
@@ -557,7 +571,8 @@ function useSync(userId) {
   )
 
   const addEntry = useCallback(
-    async (entry, photoBlob = null) => {
+    async (entry, photoBlobArg = null) => {
+      const photoBlob = photoBlobArg ?? entry.photoBlob ?? null
       const photoRequired = Boolean(db)
 
       if (photoRequired && !photoBlob && !photosByDate[entry.date]?.storagePath) {

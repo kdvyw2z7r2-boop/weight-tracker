@@ -138,12 +138,7 @@ function AddWeightModal({
     }
 
     try {
-      await onSave({
-        weight: parsedWeight,
-        date,
-        note,
-        photoBlob,
-      })
+      await onSave({ weight: parsedWeight, date, note }, photoBlob)
       setWeight('')
       setDate(format(new Date(), 'yyyy-MM-dd'))
       setNote('')
