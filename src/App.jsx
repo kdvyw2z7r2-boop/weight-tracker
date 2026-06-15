@@ -24,7 +24,7 @@ function LoadingScreen({ error, onRetry }) {
           </div>
           <h1 className="mt-5 text-lg font-semibold">Chargement de vos données</h1>
           <p className="mt-2 text-[14px] leading-relaxed text-text-tertiary">
-            On récupère votre historique sécurisé depuis Vercel KV avant d'ouvrir l'application.
+            On récupère votre historique sécurisé depuis Supabase avant d'ouvrir l'application.
           </p>
           {error ? (
             <>
@@ -123,7 +123,7 @@ function App() {
         ) : null}
         {entriesApi.isSaving ? (
           <div className="mb-3 rounded-2xl border border-border bg-bg-card px-4 py-3 text-[13px] text-text-secondary">
-            Synchronisation avec Vercel KV...
+            Synchronisation avec Supabase...
           </div>
         ) : null}
         <PageTransition tabKey={tab}>{activeScreen}</PageTransition>
