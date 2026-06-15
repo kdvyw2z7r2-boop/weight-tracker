@@ -39,6 +39,14 @@ const missingSupabaseEnvMessage =
 const photoUnavailableMessage =
   'Les photos nécessitent Supabase. Configurez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.'
 
+function formatStorageError(error) {
+  const message = error?.message ?? ''
+  if (/bucket not found/i.test(message)) {
+    return 'Bucket Storage « progress-photos » introuvable. Créez-le dans Supabase (Storage) ou exécutez supabase/storage.sql.'
+  }
+  return message || 'Impossible d’enregistrer la photo.'
+}
+
 function normalizeEntries(items) {
   if (!Array.isArray(items)) return []
 
@@ -295,7 +303,9 @@ async function uploadPhotoToSupabase(db, userId, date, blob) {
     cacheControl: '3600',
   })
 
-  if (uploadError) throw uploadError
+  if (uploadError) {
+    throw new Error(formatStorageError(uploadError))
+  }
 
   const { error: metaError } = await db.from('daily_photos').upsert({
     user_id: userId,
