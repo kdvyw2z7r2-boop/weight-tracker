@@ -70,37 +70,47 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
     <section className="space-y-4">
       <header className="animate-fade-up flex items-start justify-between">
         <div>
-          <h1 className="text-[18px] font-semibold leading-tight">Suivi de poids</h1>
-          <p className="mt-0.5 text-[13px] capitalize text-text-tertiary">{formatDateLong()}</p>
+          <h1 className="text-[20px] font-black leading-tight tracking-tight uppercase neon-text-cyan">
+            Weight
+          </h1>
+          <p className="mt-0.5 text-[12px] capitalize text-text-tertiary font-medium tracking-wide">{formatDateLong()}</p>
         </div>
       </header>
 
       {/* Hero weight card */}
-      <div className="card-base card-glow animate-scale-in animate-stagger-1 rounded-[20px] p-6">
+      <div className="card-base card-glow card-electric animate-scale-in animate-stagger-1 p-6">
         <p className="section-label">Poids actuel</p>
-        <p className="hero-weight mt-2 tabular-nums text-white">
+        <p className="hero-weight hero-weight-gradient mt-2 tabular-nums">
           {displayWeight}
           {latest ? (
-            <span className="ml-2 text-2xl font-semibold text-text-secondary">{settings.unit}</span>
+            <span className="ml-2 text-2xl font-bold" style={{ WebkitTextFillColor: 'rgba(255,255,255,0.4)' }}>{settings.unit}</span>
           ) : null}
         </p>
-        <p className={`mt-3 text-[15px] font-medium transition-colors duration-300 ${deltaColor}`}>{deltaLabel}</p>
+        {entries.length > 0 ? (
+          <div className="mt-3">
+            <span className={`badge-neon ${delta === null ? 'badge-neon-neutral' : delta <= 0 ? 'badge-neon-green' : 'badge-neon-red'}`}>
+              {deltaLabel}
+            </span>
+          </div>
+        ) : null}
 
         {/* Inline stat row */}
         {latest ? (
-          <div className="mt-5 flex items-center border-t border-border pt-4">
-            <div className="stat-row-item border-r border-border">
-              <span className={`stat-row-value ${bmi ? bmiCategory.colorClass : 'text-text-tertiary'}`}>
+          <div className="mt-5 flex items-center border-t pt-4" style={{ borderColor: 'rgba(0,229,255,0.1)' }}>
+            <div className="stat-row-item" style={{ borderRight: '1px solid rgba(0,229,255,0.1)' }}>
+              <span className={`stat-row-value ${bmi ? 'neon-text-cyan' : 'text-text-tertiary'}`}>
                 {bmi ? bmi.toFixed(1).replace('.', ',') : '—'}
               </span>
               <span className="stat-row-label">IMC</span>
             </div>
-            <div className="stat-row-item border-r border-border">
-              <span className={`stat-row-value ${monthVarColor}`}>{monthVarLabel}</span>
+            <div className="stat-row-item" style={{ borderRight: '1px solid rgba(0,229,255,0.1)' }}>
+              <span className={`stat-row-value ${monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'neon-text-green' : 'neon-text-red'}`}>
+                {monthVarLabel}
+              </span>
               <span className="stat-row-label">Ce mois</span>
             </div>
             <div className="stat-row-item">
-              <span className="stat-row-value text-text-primary">
+              <span className="stat-row-value neon-text-purple">
                 {streak}{streak > 3 ? ' 🔥' : ''}
               </span>
               <span className="stat-row-label">Série</span>
@@ -134,14 +144,14 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm font-medium text-text-primary">Évolution du poids</p>
               {weightPlan ? (
-                <p className="text-[12px] text-accent-purple">
+                <p className="text-[12px] neon-text-purple">
                   {formatPace(weightPlan.weeklyPace)}
                 </p>
               ) : (
-                <button
+                        <button
                   type="button"
                   onClick={onEditPlan}
-                  className="press-button text-[12px] text-text-tertiary underline-offset-2 hover:text-text-secondary"
+                  className="press-button text-[12px] neon-text-cyan"
                 >
                   Définir un plan
                 </button>

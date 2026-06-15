@@ -70,11 +70,16 @@ function BottomNav({ current, onChange }) {
   }, [current])
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-bg-nav/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-bg-nav/97 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl" style={{ borderColor: 'rgba(0,229,255,0.15)' }}>
       <div ref={containerRef} className="relative mx-auto grid h-16 w-full max-w-md grid-cols-4">
         <span
-          className="nav-indicator absolute top-0 h-0.5 rounded-full bg-white transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
-          style={{ left: indicator.left, width: indicator.width }}
+          className="nav-indicator absolute top-0 h-[2px] rounded-full transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+          style={{
+            left: indicator.left,
+            width: indicator.width,
+            background: 'linear-gradient(90deg, #00e5ff, #bf00ff)',
+            boxShadow: '0 0 8px rgba(0,229,255,0.8)',
+          }}
           aria-hidden="true"
         />
         {tabs.map((tab) => {
@@ -87,8 +92,9 @@ function BottomNav({ current, onChange }) {
               }}
               type="button"
               onClick={() => onChange(tab.id)}
-              className={`press-button flex flex-col items-center justify-center gap-1 transition-colors duration-200 ${
-                active ? 'text-white' : 'text-text-tertiary'
+              style={active ? { color: '#00e5ff', filter: 'drop-shadow(0 0 4px rgba(0,229,255,0.5))' } : undefined}
+              className={`press-button flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
+                active ? '' : 'text-text-tertiary'
               }`}
             >
               {tab.icon()}

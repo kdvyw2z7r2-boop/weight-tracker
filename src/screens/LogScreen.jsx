@@ -16,13 +16,13 @@ function LogScreen({ entries, deleteEntry, onAdd, onPhotoPress, hasPhotoForDate,
     <section className="space-y-4">
       <div className="animate-fade-up flex items-center justify-between">
         <div>
-          <h2 className="text-[18px] font-semibold">Historique</h2>
+          <h2 className="text-[20px] font-black uppercase tracking-tight neon-text-cyan">Journal</h2>
           <p className="mt-0.5 text-[13px] text-text-tertiary">
             {entries.length} entrée{entries.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button type="button" onClick={onAdd} className="btn-primary h-11 px-5 text-[15px]">
-          Ajouter
+        <button type="button" onClick={onAdd} className="btn-primary h-10 px-5 text-[13px] font-bold tracking-wide">
+          + Ajouter
         </button>
       </div>
 

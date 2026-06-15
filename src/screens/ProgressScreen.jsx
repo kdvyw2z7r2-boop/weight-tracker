@@ -76,8 +76,8 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
   return (
     <section className="space-y-4">
       <div className="animate-fade-up">
-        <h2 className="text-[18px] font-semibold">Progrès</h2>
-        <p className="mt-0.5 text-[13px] text-text-tertiary">Analyse et objectifs</p>
+        <h2 className="text-[20px] font-black uppercase tracking-tight neon-text-cyan">Progrès</h2>
+        <p className="mt-0.5 text-[12px] uppercase tracking-wide text-text-tertiary font-medium">Analyse et objectifs</p>
       </div>
 
       <div className="animate-fade-up animate-stagger-1">
@@ -88,8 +88,8 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
       <div className="card-base card-glow animate-fade-up animate-stagger-2">
         <p className="section-label">IMC</p>
         <div className="flex items-end gap-3 mt-2">
-          <p className="hero-weight tabular-nums">{bmiRounded !== null ? animatedBmi.toFixed(1).replace('.', ',') : '—'}</p>
-          <p className={`mb-1.5 text-sm font-medium ${bmiCategory.colorClass}`}>{bmiCategory.label}</p>
+          <p className="hero-weight hero-weight-gradient tabular-nums">{bmiRounded !== null ? animatedBmi.toFixed(1).replace('.', ',') : '—'}</p>
+          <p className={`mb-1.5 text-sm font-bold ${bmiCategory.colorClass}`}>{bmiCategory.label}</p>
         </div>
 
         <div className="relative mt-5 pt-4">
@@ -141,7 +141,7 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
             <button
               type="button"
               onClick={onEditPlan}
-              className="press-button text-[12px] text-accent-purple"
+              className="press-button text-[12px] neon-text-cyan font-bold"
             >
               Modifier
             </button>
@@ -157,7 +157,7 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
                     : 'Pas encore de données'}
                 </p>
               </div>
-              <p className="text-[16px] font-bold text-accent-purple">{formatPace(plan.weeklyPace)}</p>
+              <p className="text-[16px] font-black neon-text-purple">{formatPace(plan.weeklyPace)}</p>
             </div>
 
             {nextCheckpoint ? (
@@ -166,7 +166,7 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
                   <p className="text-[14px] font-medium text-white">Prochain palier</p>
                   <p className="text-[12px] text-text-tertiary mt-0.5">{formatDatePlanShort(nextCheckpoint.date)}</p>
                 </div>
-                <p className="text-[16px] font-bold tabular-nums text-white">
+                <p className="text-[16px] font-black tabular-nums text-white">
                   {formatWeight(nextCheckpoint.weight, settings.unit)} {settings.unit}
                 </p>
               </div>
@@ -175,9 +175,9 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
             <div className="flex items-center justify-between px-4 py-4 border-t border-border">
               <div>
                 <p className="text-[14px] font-medium text-white">Objectif final</p>
-                <p className="text-[12px] text-accent-amber mt-0.5">{formatDatePlanShort(plan.endDate)}</p>
+                <p className="text-[12px] neon-text-amber mt-0.5">{formatDatePlanShort(plan.endDate)}</p>
               </div>
-              <p className="text-[16px] font-bold tabular-nums text-accent-amber">
+              <p className="text-[16px] font-bold tabular-nums neon-text-amber">
                 {formatWeight(plan.targetWeight, settings.unit)} {settings.unit}
               </p>
             </div>

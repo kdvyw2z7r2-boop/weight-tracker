@@ -31,10 +31,10 @@ function EntryCard({
   const delta = previous ? entry.weight - previous.weight : null
   const deltaBadgeClass =
     delta === null
-      ? 'bg-bg-elevated text-text-tertiary'
+      ? 'badge-neon badge-neon-neutral'
       : delta <= 0
-        ? 'bg-accent-green/15 text-accent-green'
-        : 'bg-accent-red/15 text-accent-red'
+        ? 'badge-neon badge-neon-green'
+        : 'badge-neon badge-neon-red'
 
   return (
     <article
@@ -69,13 +69,13 @@ function EntryCard({
 
       <div className="flex items-end justify-between pr-16">
         <div>
-          <p className="text-[13px] text-text-tertiary">{formatDateEntry(entry.date)}</p>
-          <p className="mt-1 text-[22px] font-semibold leading-tight tabular-nums text-white">
-            {entry.weight.toString().replace('.', ',')} {unit}
+          <p className="text-[12px] font-medium tracking-wide uppercase text-text-tertiary">{formatDateEntry(entry.date)}</p>
+          <p className="mt-1 text-[24px] font-black leading-tight tabular-nums text-white" style={{ letterSpacing: '-1px' }}>
+            {entry.weight.toString().replace('.', ',')} <span className="text-[14px] font-bold text-text-tertiary">{unit}</span>
           </p>
         </div>
         <div className="text-right">
-          <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${deltaBadgeClass}`}>
+          <span className={deltaBadgeClass}>
             {delta === null
               ? '—'
               : `${delta > 0 ? '+' : ''}${delta.toFixed(1).replace('.', ',')} ${unit}`}
