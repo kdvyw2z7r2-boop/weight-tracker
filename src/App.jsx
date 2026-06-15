@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import BottomNav from './BottomNav'
 import AddWeightModal from './components/AddWeightModal'
 import InstallAppTutorial from './components/InstallAppTutorial'
 import PageTransition from './components/PageTransition'
+import PhotoViewerModal from './components/PhotoViewerModal'
 import WeightPlanModal from './components/WeightPlanModal'
-import useEntries from './hooks/useEntries'
-import useSettings from './hooks/useSettings'
+import useSync from './hooks/useSync'
 import useUserId from './hooks/useUserId'
 import DashboardScreen from './screens/DashboardScreen'
 import LogScreen from './screens/LogScreen'
@@ -42,14 +42,16 @@ function LoadingScreen({ error, onRetry }) {
 
 function App() {
   const userId = useUserId()
+  const sync = useSync(userId)
   const [tab, setTab] = useState('dashboard')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
   const [planModalDismissed, setPlanModalDismissed] = useState(false)
-  const { settings, updateSettings, resetSettings } = useSettings()
-  const entriesApi = useEntries(settings.unit, userId)
+  const [photoViewerEntry, setPhotoViewerEntry] = useState(null)
+  const [addModalDate, setAddModalDate] = useState(null)
 
-  const latest = entriesApi.entries[0]
+  const { settings, updateSettings, resetSettings } = sync
+  const latest = sync.entries[0]
   const canConfigurePlan = Boolean(latest && settings.targetWeight && latest.weight > settings.targetWeight)
   const shouldAutoOpenPlan =
     canConfigurePlan &&
@@ -58,7 +60,7 @@ function App() {
     !planModalDismissed &&
     (tab === 'plan' || tab === 'dashboard')
 
-  const openPlanModal = () => setIsPlanModalOpen(true)
+  const openPlanModal = useCallback(() => setIsPlanModalOpen(true), [])
   const closePlanModal = () => {
     setIsPlanModalOpen(false)
     setPlanModalDismissed(true)
@@ -67,27 +69,45 @@ function App() {
     }
   }
 
+  const openAddModal = useCallback((date = null) => {
+    setAddModalDate(date)
+    setIsModalOpen(true)
+  }, [])
+
+  const closeAddModal = useCallback(() => {
+    setIsModalOpen(false)
+    setAddModalDate(null)
+  }, [])
+
+  const handlePhotoPress = useCallback((entry) => {
+    setPhotoViewerEntry(entry)
+  }, [])
+
+  const closePhotoViewer = useCallback(() => {
+    setPhotoViewerEntry(null)
+  }, [])
+
   const activeScreen = useMemo(() => {
     switch (tab) {
       case 'log':
         return (
           <LogScreen
-            {...entriesApi}
+            {...sync}
             unit={settings.unit}
             height={settings.height}
-            onAdd={() => setIsModalOpen(true)}
+            onAdd={() => openAddModal()}
+            onPhotoPress={handlePhotoPress}
+            hasPhotoForDate={sync.hasPhotoForDate}
           />
         )
       case 'stats':
-        return <StatsScreen entries={entriesApi.entries} settings={settings} />
+        return <StatsScreen entries={sync.entries} settings={settings} />
       case 'plan':
-        return (
-          <PlanScreen entries={entriesApi.entries} settings={settings} onEditPlan={openPlanModal} />
-        )
+        return <PlanScreen entries={sync.entries} settings={settings} onEditPlan={openPlanModal} />
       case 'settings':
         return (
           <SettingsScreen
-            entriesApi={entriesApi}
+            entriesApi={sync}
             settings={settings}
             updateSettings={updateSettings}
             resetSettings={resetSettings}
@@ -97,31 +117,34 @@ function App() {
       default:
         return (
           <DashboardScreen
-            entries={entriesApi.entries}
+            entries={sync.entries}
             settings={settings}
-            movingAverage={entriesApi.getMovingAverage(7)}
-            onAdd={() => setIsModalOpen(true)}
+            movingAverage={sync.getMovingAverage(7)}
+            photosByDate={sync.photosByDate}
+            onAdd={() => openAddModal()}
             onEditPlan={openPlanModal}
           />
         )
     }
-  }, [tab, entriesApi, settings, updateSettings, resetSettings])
+  }, [tab, sync, settings, updateSettings, resetSettings, openPlanModal, openAddModal, handlePhotoPress])
 
-  if (entriesApi.isLoading || !entriesApi.hasLoaded) {
-    return <LoadingScreen error={entriesApi.error} onRetry={entriesApi.reload} />
+  if (sync.isLoading || !sync.hasLoaded) {
+    return <LoadingScreen error={sync.error} onRetry={sync.reload} />
   }
+
+  const photoViewerPhoto = photoViewerEntry ? sync.getPhotoForDate(photoViewerEntry.date) : null
 
   return (
     <div className="relative min-h-screen bg-bg-primary text-text-primary">
       <div className="ambient-glow" aria-hidden="true" />
       <main className="relative z-10 mx-auto w-full max-w-md px-4 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] pt-4">
         <InstallAppTutorial />
-        {entriesApi.error ? (
+        {sync.error ? (
           <div className="mb-3 rounded-2xl border border-accent-red/20 bg-accent-red/10 px-4 py-3 text-[13px] leading-relaxed text-accent-red">
-            {entriesApi.error}
+            {sync.error}
           </div>
         ) : null}
-        {entriesApi.isSaving ? (
+        {sync.isSaving ? (
           <div className="mb-3 rounded-2xl border border-border bg-bg-card px-4 py-3 text-[13px] text-text-secondary">
             Synchronisation avec Supabase...
           </div>
@@ -130,10 +153,33 @@ function App() {
       </main>
       <BottomNav current={tab} onChange={setTab} />
       <AddWeightModal
+        key={isModalOpen ? `add-${addModalDate ?? 'today'}` : 'add-closed'}
         isOpen={isModalOpen}
         unit={settings.unit}
-        onClose={() => setIsModalOpen(false)}
-        onSave={entriesApi.addEntry}
+        onClose={closeAddModal}
+        onSave={sync.addEntry}
+        initial={addModalDate ? { date: addModalDate } : null}
+        getPhotoForDate={sync.getPhotoForDate}
+        isSaving={sync.isSaving}
+        isSupabaseConfigured={sync.isSupabaseConfigured}
+      />
+      <PhotoViewerModal
+        key={photoViewerEntry ? `photo-${photoViewerEntry.id}` : 'photo-closed'}
+        isOpen={Boolean(photoViewerEntry)}
+        onClose={closePhotoViewer}
+        date={photoViewerEntry?.date}
+        photoUrl={photoViewerPhoto?.url}
+        weight={photoViewerEntry?.weight}
+        unit={settings.unit}
+        isSaving={sync.isSaving}
+        onChangePhoto={async (blob) => {
+          if (!photoViewerEntry) return
+          await sync.uploadDailyPhoto(photoViewerEntry.date, blob)
+        }}
+        onDeletePhoto={async () => {
+          if (!photoViewerEntry) return
+          await sync.deleteDailyPhoto(photoViewerEntry.date)
+        }}
       />
       <WeightPlanModal
         key={`plan-${settings.weeklyPace ?? 'new'}-${isPlanModalOpen || shouldAutoOpenPlan}`}

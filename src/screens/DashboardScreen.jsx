@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import PillSelector from '../components/PillSelector'
+import ProgressCompare from '../components/ProgressCompare'
 import ProgressRing from '../components/ProgressRing'
 import QuickStatCard from '../components/QuickStatCard'
 import StreakCard from '../components/StreakCard'
@@ -23,7 +24,7 @@ const PERIODS = [
   { key: 'all', label: 'Tout', days: null },
 ]
 
-function DashboardScreen({ entries, settings, movingAverage, onAdd, onEditPlan }) {
+function DashboardScreen({ entries, settings, movingAverage, photosByDate, onAdd, onEditPlan }) {
   const [period, setPeriod] = useState('all')
   const latest = entries[0]
   const previous = entries[1]
@@ -172,15 +173,7 @@ function DashboardScreen({ entries, settings, movingAverage, onAdd, onEditPlan }
               unit={settings.unit}
               plan={weightPlan}
             />
-            {weightPlan ? (
-              <button
-                type="button"
-                onClick={onEditPlan}
-                className="press-button mt-3 w-full text-[13px] font-medium text-[#A78BFA]"
-              >
-                Ajuster l&apos;objectif et le rythme
-              </button>
-            ) : (
+            {!weightPlan ? (
               <button
                 type="button"
                 onClick={onEditPlan}
@@ -188,7 +181,7 @@ function DashboardScreen({ entries, settings, movingAverage, onAdd, onEditPlan }
               >
                 Définir un rythme et des points de contrôle
               </button>
-            )}
+            ) : null}
             <div className="mt-4">
               <PillSelector options={PERIODS} value={period} onChange={setPeriod} />
             </div>
@@ -220,6 +213,8 @@ function DashboardScreen({ entries, settings, movingAverage, onAdd, onEditPlan }
           </div>
 
           <StreakCard entries={entries} />
+
+          <ProgressCompare photosByDate={photosByDate} entries={entries} unit={settings.unit} />
         </>
       )}
     </section>

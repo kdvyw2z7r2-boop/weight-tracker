@@ -5,8 +5,10 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
+export const PHOTO_BUCKET = 'progress-photos'
+
 export function createSupabaseClient(userId) {
-  if (!isSupabaseConfigured) return null
+  if (!isSupabaseConfigured || !userId) return null
 
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
