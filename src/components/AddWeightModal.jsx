@@ -35,13 +35,21 @@ function AddWeightModal({
   const [photoPreview, setPhotoPreview] = useState(null)
   const [photoBlob, setPhotoBlob] = useState(null)
   const previousDateRef = useRef(date)
-  const { cropImageUrl, isCropOpen, closeCrop, handleFileSelect } = usePhotoCrop()
+  const {
+    pendingImageUrl,
+    hasPendingImage,
+    isCropOpen,
+    handleFileSelect,
+    openCrop,
+    closeCrop,
+    clearPending,
+  } = usePhotoCrop()
 
   const existingPhotoUrl = getPhotoForDate?.(date)?.url ?? null
   const hasExistingPhoto = Boolean(existingPhotoUrl)
   const photoRequired = isSupabaseConfigured
-  const hasPhoto = Boolean(photoPreview || hasExistingPhoto)
-  const canSubmit = (!photoRequired || hasPhoto) && !isCropOpen && !isSaving
+  const hasPhoto = Boolean(photoBlob || hasExistingPhoto)
+  const canSubmit = (!photoRequired || hasPhoto) && !hasPendingImage && !isCropOpen && !isSaving
 
   useEffect(() => {
     if (isOpen) {
@@ -85,7 +93,7 @@ function AddWeightModal({
   if (!render) return null
 
   const handleClose = () => {
-    closeCrop()
+    clearPending()
     if (photoPreview?.startsWith('blob:')) {
       URL.revokeObjectURL(photoPreview)
     }
@@ -105,10 +113,12 @@ function AddWeightModal({
 
   const handleCropConfirm = async (blob) => {
     closeCrop()
+    clearPending()
     applyPhotoBlob(blob)
   }
 
   const handleRemovePhoto = () => {
+    clearPending()
     if (photoPreview?.startsWith('blob:')) {
       URL.revokeObjectURL(photoPreview)
     }
@@ -147,6 +157,7 @@ function AddWeightModal({
   const displayPreview = photoPreview || existingPhotoUrl
 
   return (
+    <>
     <div className="fixed inset-0 z-30 flex items-end justify-center">
       <button
         type="button"
@@ -172,7 +183,41 @@ function AddWeightModal({
               Supabase requis pour les photos. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.
             </p>
           ) : null}
-          {displayPreview ? (
+          {hasPendingImage ? (
+            <div className="mx-auto w-[180px] space-y-3">
+              <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+                <img src={pendingImageUrl} alt="Aperçu photo" className="h-full w-full object-contain" />
+              </div>
+              <p className="text-center text-[12px] text-text-tertiary">
+                Ajustez le cadrage avant d&apos;enregistrer
+              </p>
+              <button
+                type="button"
+                onClick={openCrop}
+                className="btn-primary h-11 w-full rounded-[14px] text-[14px]"
+              >
+                Recadrer
+              </button>
+              <label className="press-button relative flex h-10 w-full cursor-pointer items-center justify-center rounded-xl bg-bg-elevated text-[13px] font-medium text-text-secondary">
+                Changer de photo
+                <input
+                  type="file"
+                  accept={PHOTO_LIBRARY_ACCEPT}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  onChange={handleFileSelect}
+                  tabIndex={-1}
+                  aria-label="Changer de photo"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={clearPending}
+                className="press-button h-10 w-full rounded-xl text-[13px] font-medium text-text-secondary"
+              >
+                Annuler
+              </button>
+            </div>
+          ) : displayPreview ? (
             <div className="mx-auto w-[180px]">
               <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-border bg-bg-elevated">
                 <img src={displayPreview} alt="Aperçu photo" className="h-full w-full object-cover" />
@@ -267,13 +312,14 @@ function AddWeightModal({
           {isSaving ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </form>
+    </div>
       <PhotoCropModal
         isOpen={isCropOpen}
-        imageUrl={cropImageUrl}
+        imageUrl={pendingImageUrl}
         onClose={closeCrop}
         onConfirm={handleCropConfirm}
       />
-    </div>
+    </>
   )
 }
 
