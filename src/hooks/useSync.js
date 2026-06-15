@@ -529,8 +529,9 @@ function useSync(userId) {
         return uploaded
       } catch (uploadError) {
         setStorageMode('local')
-        setError(uploadError.message || localFallbackMessage)
-        throw uploadError
+        const message = uploadError.message || localFallbackMessage
+        setError(message)
+        throw new Error(message)
       } finally {
         setIsSaving(false)
       }

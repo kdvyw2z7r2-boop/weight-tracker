@@ -3,6 +3,7 @@ import BottomNav from './BottomNav'
 import AddWeightModal from './components/AddWeightModal'
 import InstallAppTutorial from './components/InstallAppTutorial'
 import PageTransition from './components/PageTransition'
+import PhotoActionSheet from './components/PhotoActionSheet'
 import PhotoViewerModal from './components/PhotoViewerModal'
 import WeightPlanModal from './components/WeightPlanModal'
 import useSync from './hooks/useSync'
@@ -43,6 +44,7 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
   const [planModalDismissed, setPlanModalDismissed] = useState(false)
+  const [photoActionEntry, setPhotoActionEntry] = useState(null)
   const [photoViewerEntry, setPhotoViewerEntry] = useState(null)
   const [addModalDate, setAddModalDate] = useState(null)
 
@@ -76,6 +78,15 @@ function App() {
   }, [])
 
   const handlePhotoPress = useCallback((entry) => {
+    setPhotoActionEntry(entry)
+  }, [])
+
+  const closePhotoAction = useCallback(() => {
+    setPhotoActionEntry(null)
+  }, [])
+
+  const openPhotoViewer = useCallback((entry) => {
+    setPhotoActionEntry(null)
     setPhotoViewerEntry(entry)
   }, [])
 
@@ -165,6 +176,24 @@ function App() {
         getPhotoForDate={sync.getPhotoForDate}
         isSaving={sync.isSaving}
         isSupabaseConfigured={sync.isSupabaseConfigured}
+      />
+      <PhotoActionSheet
+        key={photoActionEntry ? `photo-action-${photoActionEntry.id}` : 'photo-action-closed'}
+        isOpen={Boolean(photoActionEntry)}
+        onClose={closePhotoAction}
+        date={photoActionEntry?.date}
+        weight={photoActionEntry?.weight}
+        unit={settings.unit}
+        hasPhoto={photoActionEntry ? sync.hasPhotoForDate(photoActionEntry.date) : false}
+        isSaving={sync.isSaving}
+        onUpload={async (blob) => {
+          if (!photoActionEntry) return
+          await sync.uploadDailyPhoto(photoActionEntry.date, blob)
+        }}
+        onView={() => {
+          if (!photoActionEntry) return
+          openPhotoViewer(photoActionEntry)
+        }}
       />
       <PhotoViewerModal
         key={photoViewerEntry ? `photo-${photoViewerEntry.id}` : 'photo-closed'}
