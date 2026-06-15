@@ -8,23 +8,37 @@ create table if not exists public.weight_histories (
 
 alter table public.weight_histories enable row level security;
 
--- This app has no account system: the unguessable ?id=... URL acts as the user's private key.
--- The frontend only queries exact user_id values, but anyone with a copied link can access that history.
+create or replace function public.current_weight_user_id()
+returns text
+language sql
+stable
+as $$
+  select nullif(
+    coalesce(nullif(current_setting('request.headers', true), ''), '{}')::json ->> 'x-user-id',
+    ''
+  );
+$$;
+
+drop policy if exists "Allow anonymous reads by link id" on public.weight_histories;
+drop policy if exists "Allow anonymous inserts by link id" on public.weight_histories;
+drop policy if exists "Allow anonymous updates by link id" on public.weight_histories;
+
+-- The unguessable ?id=... URL acts as the private key. The frontend sends it as x-user-id.
 create policy "Allow anonymous reads by link id"
   on public.weight_histories
   for select
   to anon
-  using (true);
+  using (user_id = public.current_weight_user_id());
 
 create policy "Allow anonymous inserts by link id"
   on public.weight_histories
   for insert
   to anon
-  with check (true);
+  with check (user_id = public.current_weight_user_id());
 
 create policy "Allow anonymous updates by link id"
   on public.weight_histories
   for update
   to anon
-  using (true)
-  with check (true);
+  using (user_id = public.current_weight_user_id())
+  with check (user_id = public.current_weight_user_id());
