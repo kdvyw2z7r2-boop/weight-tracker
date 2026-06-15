@@ -1,9 +1,6 @@
-import { useMemo, useState } from 'react'
-import PillSelector from '../components/PillSelector'
+import { useMemo } from 'react'
 import ProgressCompare from '../components/ProgressCompare'
 import ProgressRing from '../components/ProgressRing'
-import QuickStatCard from '../components/QuickStatCard'
-import StreakCard from '../components/StreakCard'
 import WeightChart from '../components/WeightChart'
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
 import { formatDateLong } from '../utils/locale'
@@ -11,21 +8,11 @@ import {
   getBmi,
   getBmiCategory,
   getCurrentStreak,
-  getLowestIn7Days,
   getMonthVariation,
 } from '../utils/stats'
 import { computeWeightPlan, formatPace, resolvePlanAnchor } from '../utils/weightPlan'
 
-const PERIODS = [
-  { key: '2w', label: '2 sem.', days: 14 },
-  { key: '1m', label: '1 mois', days: 30 },
-  { key: '3m', label: '3 mois', days: 90 },
-  { key: '6m', label: '6 mois', days: 180 },
-  { key: 'all', label: 'Tout', days: null },
-]
-
-function DashboardScreen({ entries, settings, movingAverage, photosByDate, onAdd, onEditPlan }) {
-  const [period, setPeriod] = useState('all')
+function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEditPlan }) {
   const latest = entries[0]
   const previous = entries[1]
   const delta = latest && previous ? latest.weight - previous.weight : null
@@ -35,7 +22,6 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onAdd
   )
   const firstEntry = sortedAsc[0]
   const startWeight = firstEntry?.weight ?? latest?.weight ?? settings.targetWeight
-  const lowest7 = getLowestIn7Days(entries)
   const monthVariation = getMonthVariation(entries)
   const streak = getCurrentStreak(entries)
   const bmi = latest ? getBmi(latest.weight, settings.height) : null
@@ -54,19 +40,7 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onAdd
     })
   }, [settings.weeklyPace, settings.targetWeight, settings.planStartDate, settings.planStartWeight, entries])
 
-  const filteredEntriesAsc = useMemo(() => {
-    const selected = PERIODS.find((item) => item.key === period)
-    if (!selected || selected.days === null) return [...entries].reverse()
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - selected.days)
-    const cutoffIso = cutoff.toISOString().slice(0, 10)
-    return [...entries].reverse().filter((entry) => entry.date >= cutoffIso)
-  }, [entries, period])
-
-  const filteredMovingAverage = useMemo(() => {
-    const dates = new Set(filteredEntriesAsc.map((entry) => entry.date))
-    return movingAverage.filter((item) => dates.has(item.date))
-  }, [filteredEntriesAsc, movingAverage])
+  const entriesAsc = useMemo(() => [...entries].reverse(), [entries])
 
   const deltaLabel =
     entries.length === 0
@@ -84,11 +58,7 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onAdd
       : `${monthVariation > 0 ? '+' : ''}${monthVariation.toFixed(1).replace('.', ',')} ${settings.unit}`
 
   const monthVarColor =
-    monthVariation === null
-      ? 'text-text-tertiary'
-      : monthVariation <= 0
-        ? 'text-accent-green'
-        : 'text-accent-red'
+    monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'text-accent-green' : 'text-accent-red'
 
   const displayWeight = latest
     ? settings.unit === 'kg'
@@ -100,32 +70,52 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onAdd
     <section className="space-y-4">
       <header className="animate-fade-up flex items-start justify-between">
         <div>
-          <h1 className="text-[18px] font-semibold leading-tight">Suivi de poids</h1>
-          <p className="mt-0.5 text-[13px] capitalize text-text-tertiary">{formatDateLong()}</p>
+          <h1 className="text-[20px] font-black leading-tight tracking-tight uppercase neon-text-cyan">
+            Weight
+          </h1>
+          <p className="mt-0.5 text-[12px] capitalize text-text-tertiary font-medium tracking-wide">{formatDateLong()}</p>
         </div>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="btn-primary flex h-11 w-11 items-center justify-center text-2xl font-light"
-          aria-label="Ajouter une pesée"
-        >
-          +
-        </button>
       </header>
 
-      <div className="card-base card-glow animate-scale-in animate-stagger-1 rounded-[20px] p-6">
+      {/* Hero weight card */}
+      <div className="card-base card-glow card-electric animate-scale-in animate-stagger-1 p-6">
         <p className="section-label">Poids actuel</p>
-        <p className="hero-weight mt-2 tabular-nums text-white">
+        <p className="hero-weight hero-weight-gradient mt-2 tabular-nums">
           {displayWeight}
           {latest ? (
-            <span className="ml-2 text-2xl font-semibold text-text-secondary">{settings.unit}</span>
+            <span className="ml-2 text-2xl font-bold" style={{ WebkitTextFillColor: 'rgba(255,255,255,0.4)' }}>{settings.unit}</span>
           ) : null}
         </p>
-        <p className={`mt-3 text-[15px] font-medium transition-colors duration-300 ${deltaColor}`}>{deltaLabel}</p>
-        {lowest7 !== null && latest && lowest7 < latest.weight ? (
-          <p className="mt-1.5 text-[13px] text-text-tertiary">
-            Le plus bas sur 7 jours : {lowest7.toString().replace('.', ',')} {settings.unit}
-          </p>
+        {entries.length > 0 ? (
+          <div className="mt-3">
+            <span className={`badge-neon ${delta === null ? 'badge-neon-neutral' : delta <= 0 ? 'badge-neon-green' : 'badge-neon-red'}`}>
+              {deltaLabel}
+            </span>
+          </div>
+        ) : null}
+
+        {/* Inline stat row */}
+        {latest ? (
+          <div className="mt-5 flex items-center border-t pt-4" style={{ borderColor: 'rgba(0,229,255,0.1)' }}>
+            <div className="stat-row-item" style={{ borderRight: '1px solid rgba(0,229,255,0.1)' }}>
+              <span className={`stat-row-value ${bmi ? 'neon-text-cyan' : 'text-text-tertiary'}`}>
+                {bmi ? bmi.toFixed(1).replace('.', ',') : '—'}
+              </span>
+              <span className="stat-row-label">IMC</span>
+            </div>
+            <div className="stat-row-item" style={{ borderRight: '1px solid rgba(0,229,255,0.1)' }}>
+              <span className={`stat-row-value ${monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'neon-text-green' : 'neon-text-red'}`}>
+                {monthVarLabel}
+              </span>
+              <span className="stat-row-label">Ce mois</span>
+            </div>
+            <div className="stat-row-item">
+              <span className="stat-row-value neon-text-purple">
+                {streak}{streak > 3 ? ' 🔥' : ''}
+              </span>
+              <span className="stat-row-label">Série</span>
+            </div>
+          </div>
         ) : null}
       </div>
 
@@ -138,9 +128,6 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onAdd
           <p className="mt-2 max-w-[240px] text-[14px] leading-relaxed text-text-tertiary">
             Enregistrez votre première pesée pour voir votre progression et vos statistiques.
           </p>
-          <button type="button" onClick={onAdd} className="btn-primary mt-6 h-12 px-8 text-[15px]">
-            Enregistrer le poids
-          </button>
         </div>
       ) : (
         <>
@@ -155,64 +142,29 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onAdd
 
           <div className="card-base animate-fade-up animate-stagger-3">
             <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-text-primary">Évolution du poids</p>
-                {weightPlan ? (
-                  <p className="mt-0.5 text-[12px] text-[#A78BFA]">
-                    {weightPlan.checkpoints.length} point{weightPlan.checkpoints.length > 1 ? 's' : ''} de contrôle ·{' '}
-                    {formatPace(weightPlan.weeklyPace)}
-                  </p>
-                ) : null}
-              </div>
-              <span className="text-[12px] text-text-tertiary">{filteredEntriesAsc.length} entrée(s)</span>
+              <p className="text-sm font-medium text-text-primary">Évolution du poids</p>
+              {weightPlan ? (
+                <p className="text-[12px] neon-text-purple">
+                  {formatPace(weightPlan.weeklyPace)}
+                </p>
+              ) : (
+                        <button
+                  type="button"
+                  onClick={onEditPlan}
+                  className="press-button text-[12px] neon-text-cyan"
+                >
+                  Définir un plan
+                </button>
+              )}
             </div>
             <WeightChart
-              data={filteredEntriesAsc}
-              movingAverage={filteredMovingAverage}
+              data={entriesAsc}
+              movingAverage={movingAverage}
               targetWeight={settings.targetWeight}
               unit={settings.unit}
               plan={weightPlan}
             />
-            {!weightPlan ? (
-              <button
-                type="button"
-                onClick={onEditPlan}
-                className="press-button mt-3 w-full rounded-xl bg-bg-elevated py-2.5 text-[13px] font-medium text-text-secondary"
-              >
-                Définir un rythme et des points de contrôle
-              </button>
-            ) : null}
-            <div className="mt-4">
-              <PillSelector options={PERIODS} value={period} onChange={setPeriod} />
-            </div>
           </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <QuickStatCard
-              label="IMC"
-              value={bmi ? bmi.toFixed(1).replace('.', ',') : '—'}
-              sublabel={{ text: bmiCategory.label, className: bmiCategory.colorClass }}
-              delay={240}
-            />
-            <QuickStatCard
-              label="Ce mois"
-              value={monthVarLabel}
-              valueClassName={monthVarColor}
-              delay={300}
-            />
-            <QuickStatCard
-              label="Série"
-              value={
-                <>
-                  {streak}
-                  {streak > 3 ? ' 🔥' : ''}
-                </>
-              }
-              delay={360}
-            />
-          </div>
-
-          <StreakCard entries={entries} />
 
           <ProgressCompare photosByDate={photosByDate} entries={entries} unit={settings.unit} />
         </>

@@ -36,15 +36,21 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
             cx={radius}
             cy={radius}
           />
+          <defs>
+            <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#00e5ff" />
+              <stop offset="100%" stopColor="#bf00ff" />
+            </linearGradient>
+          </defs>
           <circle
-            stroke={isPositiveProgress ? '#4ADE80' : '#374151'}
+            stroke={isPositiveProgress ? 'url(#ring-gradient)' : '#222222'}
             fill="transparent"
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${circumference} ${circumference}`}
             style={{
               strokeDashoffset,
-              filter: isPositiveProgress ? 'drop-shadow(0 0 6px rgba(74,222,128,0.4))' : undefined,
+              filter: isPositiveProgress ? 'drop-shadow(0 0 8px rgba(0,229,255,0.6))' : undefined,
             }}
             r={normalizedRadius}
             cx={radius}
@@ -53,8 +59,8 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <p
-            className={`text-3xl font-bold leading-none tabular-nums ${
-              isPositiveProgress ? 'text-accent-green' : 'text-white'
+            className={`text-3xl font-black leading-none tabular-nums ${
+              isPositiveProgress ? 'neon-text-cyan' : 'text-white'
             }`}
           >
             {displayPercent}%
@@ -66,7 +72,7 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
       </div>
 
       <div className="min-w-0 flex-1 text-right text-[13px] leading-snug text-text-tertiary">
-        <p className="section-label !normal-case !tracking-normal !text-[11px]">Objectif 🏆</p>
+        <p className="section-label !normal-case !tracking-normal !text-[11px]">Objectif</p>
         <p className="mt-1.5 text-[15px] font-medium text-text-primary">
           {targetWeight} {unit}
         </p>

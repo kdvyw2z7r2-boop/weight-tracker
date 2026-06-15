@@ -9,9 +9,8 @@ import useSync from './hooks/useSync'
 import useUserId from './hooks/useUserId'
 import DashboardScreen from './screens/DashboardScreen'
 import LogScreen from './screens/LogScreen'
-import PlanScreen from './screens/PlanScreen'
+import ProgressScreen from './screens/ProgressScreen'
 import SettingsScreen from './screens/SettingsScreen'
-import StatsScreen from './screens/StatsScreen'
 
 function LoadingScreen({ error, onRetry }) {
   return (
@@ -22,10 +21,7 @@ function LoadingScreen({ error, onRetry }) {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-bg-elevated">
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" aria-hidden="true" />
           </div>
-          <h1 className="mt-5 text-lg font-semibold">Chargement de vos données</h1>
-          <p className="mt-2 text-[14px] leading-relaxed text-text-tertiary">
-            On récupère votre historique sécurisé depuis Supabase avant d'ouvrir l'application.
-          </p>
+          <h1 className="mt-5 text-lg font-semibold">Chargement…</h1>
           {error ? (
             <>
               <p className="mt-4 rounded-xl bg-accent-red/10 px-4 py-3 text-sm text-accent-red">{error}</p>
@@ -58,7 +54,7 @@ function App() {
     !settings.planSetupComplete &&
     settings.weeklyPace == null &&
     !planModalDismissed &&
-    (tab === 'plan' || tab === 'dashboard')
+    (tab === 'progress' || tab === 'dashboard')
 
   const openPlanModal = useCallback(() => setIsPlanModalOpen(true), [])
   const closePlanModal = () => {
@@ -87,6 +83,8 @@ function App() {
     setPhotoViewerEntry(null)
   }, [])
 
+  const showFab = tab !== 'settings'
+
   const activeScreen = useMemo(() => {
     switch (tab) {
       case 'log':
@@ -94,16 +92,13 @@ function App() {
           <LogScreen
             {...sync}
             unit={settings.unit}
-            height={settings.height}
             onAdd={() => openAddModal()}
             onPhotoPress={handlePhotoPress}
             hasPhotoForDate={sync.hasPhotoForDate}
           />
         )
-      case 'stats':
-        return <StatsScreen entries={sync.entries} settings={settings} />
-      case 'plan':
-        return <PlanScreen entries={sync.entries} settings={settings} onEditPlan={openPlanModal} />
+      case 'progress':
+        return <ProgressScreen entries={sync.entries} settings={settings} onEditPlan={openPlanModal} />
       case 'settings':
         return (
           <SettingsScreen
@@ -144,14 +139,22 @@ function App() {
             {sync.error}
           </div>
         ) : null}
-        {sync.isSaving ? (
-          <div className="mb-3 rounded-2xl border border-border bg-bg-card px-4 py-3 text-[13px] text-text-secondary">
-            Synchronisation avec Supabase...
-          </div>
-        ) : null}
         <PageTransition tabKey={tab}>{activeScreen}</PageTransition>
       </main>
+
+      {showFab ? (
+        <button
+          type="button"
+          onClick={() => openAddModal()}
+          className="fab"
+          aria-label="Ajouter une pesée"
+        >
+          +
+        </button>
+      ) : null}
+
       <BottomNav current={tab} onChange={setTab} />
+
       <AddWeightModal
         key={isModalOpen ? `add-${addModalDate ?? 'today'}` : 'add-closed'}
         isOpen={isModalOpen}
