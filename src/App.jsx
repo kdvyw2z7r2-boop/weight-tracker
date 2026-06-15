@@ -4,10 +4,12 @@ import AddWeightModal from './components/AddWeightModal'
 import InstallAppTutorial from './components/InstallAppTutorial'
 import PageTransition from './components/PageTransition'
 import PhotoActionSheet from './components/PhotoActionSheet'
+import PhotoCompareModal from './components/PhotoCompareModal'
 import PhotoViewerModal from './components/PhotoViewerModal'
 import WeightPlanModal from './components/WeightPlanModal'
 import useSync from './hooks/useSync'
 import useUserId from './hooks/useUserId'
+import { buildEntryComparePair } from './utils/progressPhotos'
 import DashboardScreen from './screens/DashboardScreen'
 import LogScreen from './screens/LogScreen'
 import ProgressScreen from './screens/ProgressScreen'
@@ -46,6 +48,7 @@ function App() {
   const [planModalDismissed, setPlanModalDismissed] = useState(false)
   const [photoActionEntry, setPhotoActionEntry] = useState(null)
   const [photoViewerEntry, setPhotoViewerEntry] = useState(null)
+  const [photoCompareEntry, setPhotoCompareEntry] = useState(null)
   const [addModalDate, setAddModalDate] = useState(null)
 
   const { settings, updateSettings, resetSettings } = sync
@@ -94,6 +97,16 @@ function App() {
     setPhotoViewerEntry(null)
   }, [])
 
+  const openPhotoCompare = useCallback((entry) => {
+    setPhotoActionEntry(null)
+    setPhotoViewerEntry(null)
+    setPhotoCompareEntry(entry)
+  }, [])
+
+  const closePhotoCompare = useCallback(() => {
+    setPhotoCompareEntry(null)
+  }, [])
+
   const showFab = tab !== 'settings'
 
   const activeScreen = useMemo(() => {
@@ -139,6 +152,11 @@ function App() {
   }
 
   const photoViewerPhoto = photoViewerEntry ? sync.getPhotoForDate(photoViewerEntry.date) : null
+  const photoComparePair = photoCompareEntry
+    ? buildEntryComparePair(sync.photosByDate, sync.entries, photoCompareEntry.date)
+    : null
+  const getCanCompare = (entry) =>
+    entry ? buildEntryComparePair(sync.photosByDate, sync.entries, entry.date) != null : false
 
   return (
     <div className="relative min-h-screen bg-bg-primary text-text-primary">
@@ -185,6 +203,7 @@ function App() {
         weight={photoActionEntry?.weight}
         unit={settings.unit}
         hasPhoto={photoActionEntry ? sync.hasPhotoForDate(photoActionEntry.date) : false}
+        canCompare={getCanCompare(photoActionEntry)}
         isSaving={sync.isSaving}
         onUpload={async (blob) => {
           if (!photoActionEntry) return
@@ -193,6 +212,10 @@ function App() {
         onView={() => {
           if (!photoActionEntry) return
           openPhotoViewer(photoActionEntry)
+        }}
+        onCompare={() => {
+          if (!photoActionEntry) return
+          openPhotoCompare(photoActionEntry)
         }}
       />
       <PhotoViewerModal
@@ -203,6 +226,7 @@ function App() {
         photoUrl={photoViewerPhoto?.url}
         weight={photoViewerEntry?.weight}
         unit={settings.unit}
+        canCompare={getCanCompare(photoViewerEntry)}
         isSaving={sync.isSaving}
         onChangePhoto={async (blob) => {
           if (!photoViewerEntry) return
@@ -212,6 +236,17 @@ function App() {
           if (!photoViewerEntry) return
           await sync.deleteDailyPhoto(photoViewerEntry.date)
         }}
+        onCompare={() => {
+          if (!photoViewerEntry) return
+          openPhotoCompare(photoViewerEntry)
+        }}
+      />
+      <PhotoCompareModal
+        key={photoCompareEntry ? `photo-compare-${photoCompareEntry.id}` : 'photo-compare-closed'}
+        isOpen={Boolean(photoCompareEntry && photoComparePair)}
+        onClose={closePhotoCompare}
+        pair={photoComparePair}
+        unit={settings.unit}
       />
       <WeightPlanModal
         key={`plan-${settings.weeklyPace ?? 'new'}-${isPlanModalOpen || shouldAutoOpenPlan}`}

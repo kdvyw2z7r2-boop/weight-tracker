@@ -1,6 +1,7 @@
 export const PHOTO_LIBRARY_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif'
 
-const TARGET_RATIO = 9 / 16
+export const PHOTO_ASPECT = 9 / 16
+const TARGET_RATIO = PHOTO_ASPECT
 const MAX_WIDTH = 720
 const WEBP_QUALITY = 0.75
 const SIGNED_URL_TTL = 60 * 60 * 24 * 7
@@ -9,6 +10,55 @@ export { SIGNED_URL_TTL }
 
 export function photoStoragePath(userId, date) {
   return `${userId}/${date}.webp`
+}
+
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.addEventListener('load', () => resolve(image))
+    image.addEventListener('error', () => reject(new Error('Impossible de lire la photo.')))
+    image.src = url
+  })
+}
+
+function canvasToWebpBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('Impossible de compresser la photo.'))
+          return
+        }
+        resolve(blob)
+      },
+      'image/webp',
+      WEBP_QUALITY,
+    )
+  })
+}
+
+export async function cropImageToBlob(imageSrc, pixelCrop) {
+  const image = await loadImage(imageSrc)
+  const outputWidth = MAX_WIDTH
+  const outputHeight = Math.round(MAX_WIDTH / TARGET_RATIO)
+  const canvas = document.createElement('canvas')
+  canvas.width = outputWidth
+  canvas.height = outputHeight
+
+  const context = canvas.getContext('2d')
+  context.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    outputWidth,
+    outputHeight,
+  )
+
+  return canvasToWebpBlob(canvas)
 }
 
 export function processPhotoFile(file) {
@@ -46,17 +96,7 @@ export function processPhotoFile(file) {
       const context = canvas.getContext('2d')
       context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, outputWidth, outputHeight)
 
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error('Impossible de compresser la photo.'))
-            return
-          }
-          resolve(blob)
-        },
-        'image/webp',
-        WEBP_QUALITY,
-      )
+      canvasToWebpBlob(canvas).then(resolve).catch(reject)
     }
 
     image.onerror = () => {

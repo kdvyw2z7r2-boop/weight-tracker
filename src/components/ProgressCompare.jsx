@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { formatDateEntry } from '../utils/locale'
 import { buildComparePairs } from '../utils/progressPhotos'
 
-function CompareSlot({ label, date, url, weight, unit }) {
+export function CompareSlot({ label, date, url, weight, unit }) {
   return (
     <div className="min-w-0 flex-1">
       <p className="mb-2 text-center text-[11px] font-medium uppercase tracking-wide text-text-tertiary">{label}</p>

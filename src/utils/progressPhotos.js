@@ -22,6 +22,33 @@ export function getWeightForDate(entries, date) {
   return dayEntries.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))[0].weight
 }
 
+export function buildEntryComparePair(photosByDate, entries, selectedDate) {
+  const sorted = sortPhotosByDate(photosByDate).filter((photo) => photo.url)
+  if (sorted.length < 2) return null
+
+  const before = sorted[0]
+  let after = sorted.find((photo) => photo.date === selectedDate)
+
+  if (!after || before.date === after.date) {
+    after = sorted[sorted.length - 1]
+  }
+
+  if (before.date === after.date) return null
+
+  return {
+    before: {
+      date: before.date,
+      url: before.url,
+      weight: getWeightForDate(entries, before.date),
+    },
+    after: {
+      date: after.date,
+      url: after.url,
+      weight: getWeightForDate(entries, after.date),
+    },
+  }
+}
+
 export function buildComparePairs(photosByDate, entries) {
   const sorted = sortPhotosByDate(photosByDate)
   if (!sorted.length) return []

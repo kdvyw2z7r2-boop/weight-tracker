@@ -1,6 +1,8 @@
 import { format } from 'date-fns'
 import { useEffect, useRef, useState } from 'react'
-import { PHOTO_LIBRARY_ACCEPT, processPhotoFile } from '../utils/photo'
+import PhotoCropModal from './PhotoCropModal'
+import usePhotoCrop from '../hooks/usePhotoCrop'
+import { PHOTO_LIBRARY_ACCEPT } from '../utils/photo'
 
 function CameraIcon({ className = 'h-6 w-6' }) {
   return (
@@ -32,14 +34,14 @@ function AddWeightModal({
   const [visible, setVisible] = useState(false)
   const [photoPreview, setPhotoPreview] = useState(null)
   const [photoBlob, setPhotoBlob] = useState(null)
-  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false)
   const previousDateRef = useRef(date)
+  const { cropImageUrl, isCropOpen, closeCrop, handleFileSelect } = usePhotoCrop()
 
   const existingPhotoUrl = getPhotoForDate?.(date)?.url ?? null
   const hasExistingPhoto = Boolean(existingPhotoUrl)
   const photoRequired = isSupabaseConfigured
   const hasPhoto = Boolean(photoPreview || hasExistingPhoto)
-  const canSubmit = (!photoRequired || hasPhoto) && !isProcessingPhoto && !isSaving
+  const canSubmit = (!photoRequired || hasPhoto) && !isCropOpen && !isSaving
 
   useEffect(() => {
     if (isOpen) {
@@ -83,6 +85,7 @@ function AddWeightModal({
   if (!render) return null
 
   const handleClose = () => {
+    closeCrop()
     if (photoPreview?.startsWith('blob:')) {
       URL.revokeObjectURL(photoPreview)
     }
@@ -92,26 +95,17 @@ function AddWeightModal({
     onClose()
   }
 
-  const handlePhotoCapture = async (event) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-
-    setIsProcessingPhoto(true)
-    setError('')
-
-    try {
-      const blob = await processPhotoFile(file)
-      if (photoPreview?.startsWith('blob:')) {
-        URL.revokeObjectURL(photoPreview)
-      }
-      setPhotoBlob(blob)
-      setPhotoPreview(URL.createObjectURL(blob))
-    } catch (captureError) {
-      setError(captureError.message || 'Impossible de traiter la photo.')
-    } finally {
-      setIsProcessingPhoto(false)
+  const applyPhotoBlob = (blob) => {
+    if (photoPreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(photoPreview)
     }
+    setPhotoBlob(blob)
+    setPhotoPreview(URL.createObjectURL(blob))
+  }
+
+  const handleCropConfirm = async (blob) => {
+    closeCrop()
+    applyPhotoBlob(blob)
   }
 
   const handleRemovePhoto = () => {
@@ -182,11 +176,6 @@ function AddWeightModal({
             <div className="mx-auto w-[180px]">
               <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-border bg-bg-elevated">
                 <img src={displayPreview} alt="Aperçu photo" className="h-full w-full object-cover" />
-                {isProcessingPhoto ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-                  </div>
-                ) : null}
               </div>
               <div className="mt-3 flex gap-2">
                 <label className="press-button relative flex flex-1 cursor-pointer items-center justify-center rounded-xl bg-bg-elevated py-2.5 text-[13px] font-medium text-text-secondary">
@@ -195,7 +184,7 @@ function AddWeightModal({
                     type="file"
                     accept={PHOTO_LIBRARY_ACCEPT}
                     className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    onChange={handlePhotoCapture}
+                    onChange={handleFileSelect}
                     tabIndex={-1}
                     aria-label="Choisir une photo depuis la bibliothèque"
                   />
@@ -224,7 +213,7 @@ function AddWeightModal({
                 type="file"
                 accept={PHOTO_LIBRARY_ACCEPT}
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                onChange={handlePhotoCapture}
+                onChange={handleFileSelect}
                 tabIndex={-1}
                 aria-label="Choisir une photo depuis la bibliothèque"
               />
@@ -278,6 +267,12 @@ function AddWeightModal({
           {isSaving ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </form>
+      <PhotoCropModal
+        isOpen={isCropOpen}
+        imageUrl={cropImageUrl}
+        onClose={closeCrop}
+        onConfirm={handleCropConfirm}
+      />
     </div>
   )
 }
