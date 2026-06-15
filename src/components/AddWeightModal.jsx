@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { useEffect, useRef, useState } from 'react'
-import { processPhotoFile } from '../utils/photo'
+import { PHOTO_LIBRARY_ACCEPT, processPhotoFile } from '../utils/photo'
 
 function CameraIcon({ className = 'h-6 w-6' }) {
   return (
@@ -33,7 +33,6 @@ function AddWeightModal({
   const [photoPreview, setPhotoPreview] = useState(null)
   const [photoBlob, setPhotoBlob] = useState(null)
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false)
-  const fileInputRef = useRef(null)
   const previousDateRef = useRef(date)
 
   const existingPhotoUrl = getPhotoForDate?.(date)?.url ?? null
@@ -179,15 +178,6 @@ function AddWeightModal({
               Supabase requis pour les photos. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.
             </p>
           ) : null}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="user"
-            className="hidden"
-            onChange={handlePhotoCapture}
-          />
-
           {displayPreview ? (
             <div className="mx-auto w-[180px]">
               <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-border bg-bg-elevated">
@@ -199,13 +189,17 @@ function AddWeightModal({
                 ) : null}
               </div>
               <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="press-button flex-1 rounded-xl bg-bg-elevated py-2.5 text-[13px] font-medium text-text-secondary"
-                >
-                  {hasExistingPhoto && !photoBlob ? 'Reprendre' : 'Changer'}
-                </button>
+                <label className="press-button relative flex flex-1 cursor-pointer items-center justify-center rounded-xl bg-bg-elevated py-2.5 text-[13px] font-medium text-text-secondary">
+                  Changer
+                  <input
+                    type="file"
+                    accept={PHOTO_LIBRARY_ACCEPT}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    onChange={handlePhotoCapture}
+                    tabIndex={-1}
+                    aria-label="Choisir une photo depuis la bibliothèque"
+                  />
+                </label>
                 {photoBlob ? (
                   <button
                     type="button"
@@ -223,14 +217,18 @@ function AddWeightModal({
               ) : null}
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="press-button mx-auto flex aspect-[9/16] w-[180px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-bg-elevated text-text-tertiary transition hover:border-white/25 hover:text-text-secondary"
-            >
+            <label className="press-button relative mx-auto flex aspect-[9/16] w-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-bg-elevated text-text-tertiary transition hover:border-white/25 hover:text-text-secondary">
               <CameraIcon className="h-8 w-8" />
-              <span className="text-[13px] font-medium">Prendre une photo</span>
-            </button>
+              <span className="text-[13px] font-medium">Choisir une photo</span>
+              <input
+                type="file"
+                accept={PHOTO_LIBRARY_ACCEPT}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                onChange={handlePhotoCapture}
+                tabIndex={-1}
+                aria-label="Choisir une photo depuis la bibliothèque"
+              />
+            </label>
           )}
         </div>
 

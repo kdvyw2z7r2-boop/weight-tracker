@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatDateEntry } from '../utils/locale'
-import { processPhotoFile } from '../utils/photo'
+import { PHOTO_LIBRARY_ACCEPT, processPhotoFile } from '../utils/photo'
 
 function PhotoViewerModal({
   isOpen,
@@ -18,7 +18,6 @@ function PhotoViewerModal({
   const [error, setError] = useState('')
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false)
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
-  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -107,14 +106,6 @@ function PhotoViewerModal({
           </button>
         </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handlePhotoCapture}
-        />
-
         <div className="relative mx-auto mt-5 aspect-[9/16] max-h-[60vh] overflow-hidden rounded-2xl border border-border bg-bg-elevated">
           {photoUrl ? (
             <img src={photoUrl} alt={`Photo du ${date}`} className="h-full w-full object-cover" />
@@ -152,14 +143,21 @@ function PhotoViewerModal({
           </div>
         ) : (
           <div className="mt-5 flex gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isProcessingPhoto || isSaving}
-              className="btn-primary h-11 flex-1 text-[14px] disabled:opacity-40"
+            <label
+              className={`btn-primary relative flex h-11 flex-1 cursor-pointer items-center justify-center text-[14px] ${
+                isProcessingPhoto || isSaving ? 'pointer-events-none opacity-40' : ''
+              }`}
             >
               {photoUrl ? 'Changer la photo' : 'Ajouter une photo'}
-            </button>
+              <input
+                type="file"
+                accept={PHOTO_LIBRARY_ACCEPT}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                onChange={handlePhotoCapture}
+                tabIndex={-1}
+                aria-label="Choisir une photo depuis la bibliothèque"
+              />
+            </label>
             {photoUrl ? (
               <button
                 type="button"

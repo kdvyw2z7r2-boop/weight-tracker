@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatDateEntry } from '../utils/locale'
-import { processPhotoFile } from '../utils/photo'
+import { PHOTO_LIBRARY_ACCEPT, processPhotoFile } from '../utils/photo'
 
 function PhotoActionSheet({
   isOpen,
@@ -17,7 +17,6 @@ function PhotoActionSheet({
   const [visible, setVisible] = useState(false)
   const [error, setError] = useState('')
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false)
-  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -88,23 +87,22 @@ function PhotoActionSheet({
           ) : null}
         </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handlePhotoSelect}
-        />
-
         <div className="mt-5 space-y-2">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isBusy}
-            className="btn-primary h-12 w-full text-[15px] disabled:opacity-40"
+          <label
+            className={`btn-primary relative flex h-12 w-full cursor-pointer items-center justify-center text-[15px] ${
+              isBusy ? 'pointer-events-none opacity-40' : ''
+            }`}
           >
             {isBusy ? 'Enregistrement…' : hasPhoto ? 'Remplacer la photo' : 'Uploader une photo'}
-          </button>
+            <input
+              type="file"
+              accept={PHOTO_LIBRARY_ACCEPT}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              onChange={handlePhotoSelect}
+              tabIndex={-1}
+              aria-label={hasPhoto ? 'Remplacer la photo depuis la bibliothèque' : 'Uploader une photo depuis la bibliothèque'}
+            />
+          </label>
           <button
             type="button"
             onClick={onView}

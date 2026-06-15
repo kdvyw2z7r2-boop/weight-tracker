@@ -1,3 +1,5 @@
+export const PHOTO_LIBRARY_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif'
+
 const TARGET_RATIO = 9 / 16
 const MAX_WIDTH = 720
 const WEBP_QUALITY = 0.75
