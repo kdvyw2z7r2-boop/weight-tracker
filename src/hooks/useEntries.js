@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
-const API_ENDPOINT = '/api/weights'
+const SUPABASE_TABLE = 'weight_histories'
 const LEGACY_ENTRIES_KEY = 'wt_entries'
 const USER_ENTRIES_PREFIX = 'wt_entries:'
 
@@ -13,7 +14,7 @@ const sortByDateDesc = (items) =>
   [...items].sort((a, b) => (a.date < b.date ? 1 : -1))
 
 const localFallbackMessage =
-  'Mode local activé : impossible de joindre le stockage cloud pour le moment.'
+  "Mode local activé : Supabase n'est pas encore disponible pour synchroniser le cloud."
 
 function normalizeEntries(items) {
   if (!Array.isArray(items)) return []
@@ -74,30 +75,31 @@ function clearLegacyEntries() {
 }
 
 async function fetchWeights(userId) {
-  const response = await fetch(`${API_ENDPOINT}?userId=${encodeURIComponent(userId)}`, {
-    headers: { Accept: 'application/json' },
-  })
+  if (!supabase) throw new Error('Supabase is not configured')
 
-  if (!response.ok) {
-    throw new Error('Unable to load weights')
-  }
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('weights')
+    .eq('user_id', userId)
+    .maybeSingle()
 
-  return normalizeEntries(await response.json())
+  if (error) throw error
+  return normalizeEntries(data?.weights ?? [])
 }
 
 async function saveWeights(userId, weights) {
-  const response = await fetch(API_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ userId, weights }),
-  })
+  if (!supabase) throw new Error('Supabase is not configured')
 
-  if (!response.ok) {
-    throw new Error('Unable to save weights')
-  }
+  const { error } = await supabase.from(SUPABASE_TABLE).upsert(
+    {
+      user_id: userId,
+      weights: normalizeEntries(weights),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  )
+
+  if (error) throw error
 }
 
 function createEntry(entry) {
@@ -115,7 +117,7 @@ function useEntries(unit = 'kg', userId) {
   const [isLoading, setIsLoading] = useState(Boolean(userId))
   const [hasLoaded, setHasLoaded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [storageMode, setStorageMode] = useState('cloud')
+  const [storageMode, setStorageMode] = useState(isSupabaseConfigured ? 'cloud' : 'local')
   const [error, setError] = useState('')
 
   const loadEntries = useCallback(async () => {
