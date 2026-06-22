@@ -24,7 +24,7 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
   const startWeight = firstEntry?.weight ?? latest?.weight ?? settings.targetWeight
   const monthVariation = getMonthVariation(entries)
   const streak = getCurrentStreak(entries)
-  const bmi = latest ? getBmi(latest.weight, settings.height) : null
+  const bmi = latest ? getBmi(latest.weight, settings.height, settings.unit) : null
   const bmiCategory = getBmiCategory(bmi)
   const animatedWeight = useAnimatedNumber(latest?.weight ?? 0, 800)
 
