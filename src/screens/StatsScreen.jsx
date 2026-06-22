@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import PillSelector from '../components/PillSelector'
 import QuickStatCard from '../components/QuickStatCard'
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
-import { getBmi, getBmiCategory } from '../utils/stats'
+import { getBmi, getBmiCategory, getBmiMarkerPercent, BMI_GAUGE_MAX, BMI_ZONES, getBmiZoneWidths } from '../utils/stats'
 
 const PERIODS = [
   { key: '2w', label: '2 sem.', days: 14 },
@@ -14,12 +14,7 @@ const PERIODS = [
   { key: 'all', label: 'Tout', days: null },
 ]
 
-const bmiZones = [
-  { label: 'Maigreur', max: 18.5, color: '#38BDF8' },
-  { label: 'Normal', max: 25, color: '#4ADE80' },
-  { label: 'Surpoids', max: 30, color: '#FBBF24' },
-  { label: 'Obésité', max: 40, color: '#F87171' },
-]
+const bmiZoneWidths = getBmiZoneWidths(BMI_GAUGE_MAX)
 
 function StatsTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
@@ -54,12 +49,11 @@ function StatsScreen({ entries, settings }) {
   const daysLeft = dailyRate !== 0 ? Math.abs((current - settings.targetWeight) / dailyRate) : null
   const projectedDate = daysLeft ? format(addDays(new Date(), Math.ceil(daysLeft)), 'dd/MM/yyyy') : null
 
-  const bmiValue = getBmi(current, settings.height)
+  const bmiValue = getBmi(current, settings.height, settings.unit)
   const bmiRounded = bmiValue ? Number(bmiValue.toFixed(1)) : null
   const bmiCategory = getBmiCategory(bmiRounded)
   const animatedBmi = useAnimatedNumber(bmiRounded ?? 0, 800)
-  const gaugeMax = 40
-  const markerPercent = bmiRounded ? Math.max(0, Math.min(100, (bmiRounded / gaugeMax) * 100)) : 0
+  const markerPercent = getBmiMarkerPercent(bmiRounded, BMI_GAUGE_MAX)
 
   const distribution = Object.entries(
     filteredEntries.reduce((acc, entry) => {
@@ -96,12 +90,16 @@ function StatsScreen({ entries, settings }) {
             </div>
           ) : null}
           <div className="flex h-3 overflow-hidden rounded-full">
-            {bmiZones.map((zone) => (
-              <div key={zone.label} className="h-full flex-1" style={{ backgroundColor: zone.color }} />
+            {bmiZoneWidths.map((zone) => (
+              <div
+                key={zone.label}
+                className="h-full"
+                style={{ width: `${zone.widthPercent}%`, backgroundColor: zone.color }}
+              />
             ))}
           </div>
           <div className="mt-2 flex justify-between text-[10px] text-text-tertiary">
-            {bmiZones.map((zone) => (
+            {BMI_ZONES.map((zone) => (
               <span key={zone.label}>{zone.label}</span>
             ))}
           </div>

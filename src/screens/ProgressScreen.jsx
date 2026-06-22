@@ -1,9 +1,20 @@
 import { addDays, format } from 'date-fns'
 import { useMemo, useState } from 'react'
+import BmiChart from '../components/BmiChart'
 import PillSelector from '../components/PillSelector'
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
 import { formatDatePlanShort } from '../utils/locale'
-import { getBmi, getBmiCategory } from '../utils/stats'
+import {
+  BMI_GAUGE_MAX,
+  BMI_ZONES,
+  getBmi,
+  getBmiCategory,
+  getBmiHistory,
+  getBmiMarkerPercent,
+  getBmiMovingAverage,
+  getBmiStats,
+  getBmiZoneWidths,
+} from '../utils/stats'
 import {
   computeActualRates,
   computeWeightPlan,
@@ -20,6 +31,11 @@ const PERIODS = [
   { key: 'all', label: 'Tout', days: null },
 ]
 
+function formatBmi(value) {
+  if (value == null || Number.isNaN(value)) return '—'
+  return value.toFixed(1).replace('.', ',')
+}
+
 function ProgressScreen({ entries, settings, onEditPlan }) {
   const [period, setPeriod] = useState('all')
 
@@ -33,30 +49,40 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
   }, [entries, period])
 
   const weights = filteredEntries.map((entry) => entry.weight)
-  const current = filteredEntries[0]?.weight ?? 0
-  const min = weights.length ? Math.min(...weights) : 0
-  const avg = weights.length ? weights.reduce((a, b) => a + b, 0) / weights.length : 0
+  const currentWeight = filteredEntries[0]?.weight ?? 0
+  const minWeight = weights.length ? Math.min(...weights) : 0
+  const avgWeight = weights.length ? weights.reduce((a, b) => a + b, 0) / weights.length : 0
 
   const last30 = [...filteredEntries].slice(0, 30)
   const oldest = last30.at(-1)
-  const dailyRate = oldest ? (current - oldest.weight) / Math.max(1, last30.length - 1) : 0
-  const daysLeft = dailyRate !== 0 ? Math.abs((current - settings.targetWeight) / dailyRate) : null
+  const dailyRate = oldest ? (currentWeight - oldest.weight) / Math.max(1, last30.length - 1) : 0
+  const daysLeft = dailyRate !== 0 ? Math.abs((currentWeight - settings.targetWeight) / dailyRate) : null
   const projectedDate = daysLeft ? format(addDays(new Date(), Math.ceil(daysLeft)), 'dd/MM/yyyy') : null
 
-  const bmiValue = getBmi(current, settings.height)
-  const bmiRounded = bmiValue ? Number(bmiValue.toFixed(1)) : null
+  const latestBmi = getBmi(entries[0]?.weight, settings.height, settings.unit)
+  const bmiRounded = latestBmi != null ? Number(latestBmi.toFixed(1)) : null
   const bmiCategory = getBmiCategory(bmiRounded)
   const animatedBmi = useAnimatedNumber(bmiRounded ?? 0, 800)
+  const markerPercent = getBmiMarkerPercent(bmiRounded, BMI_GAUGE_MAX)
+  const bmiZoneWidths = getBmiZoneWidths(BMI_GAUGE_MAX)
 
-  const gaugeMax = 40
-  const markerPercent = bmiRounded ? Math.max(0, Math.min(100, (bmiRounded / gaugeMax) * 100)) : 0
+  const bmiHistory = useMemo(
+    () => getBmiHistory(filteredEntries, settings.height, settings.unit),
+    [filteredEntries, settings.height, settings.unit],
+  )
+  const bmiMovingAverage = useMemo(() => getBmiMovingAverage(bmiHistory, 7), [bmiHistory])
+  const bmiStats = useMemo(
+    () => getBmiStats(filteredEntries, settings.height, settings.unit),
+    [filteredEntries, settings.height, settings.unit],
+  )
 
-  const bmiZones = [
-    { label: 'Maigreur', max: 18.5, color: '#38BDF8' },
-    { label: 'Normal', max: 25, color: '#4ADE80' },
-    { label: 'Surpoids', max: 30, color: '#FBBF24' },
-    { label: 'Obésité', max: 40, color: '#F87171' },
-  ]
+  const bmiDeltaLabel =
+    bmiStats.delta == null
+      ? '—'
+      : `${bmiStats.delta > 0 ? '+' : ''}${formatBmi(bmiStats.delta)}`
+
+  const bmiDeltaColor =
+    bmiStats.delta == null ? 'text-text-tertiary' : bmiStats.delta <= 0 ? 'text-accent-green' : 'text-accent-red'
 
   // Plan section
   const anchor = resolvePlanAnchor(settings, entries)
@@ -103,27 +129,59 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
             </div>
           ) : null}
           <div className="flex h-2.5 overflow-hidden rounded-full">
-            {bmiZones.map((zone) => (
-              <div key={zone.label} className="h-full flex-1" style={{ backgroundColor: zone.color }} />
+            {bmiZoneWidths.map((zone) => (
+              <div
+                key={zone.label}
+                className="h-full"
+                style={{ width: `${zone.widthPercent}%`, backgroundColor: zone.color }}
+              />
             ))}
           </div>
           <div className="mt-2 flex justify-between text-[10px] text-text-tertiary">
-            {bmiZones.map((zone) => (
+            {BMI_ZONES.map((zone) => (
               <span key={zone.label}>{zone.label}</span>
             ))}
           </div>
         </div>
+
+        {settings.height > 0 && bmiStats.count > 0 ? (
+          <div className="mt-5 flex items-center border-t border-border pt-4">
+            <div className="stat-row-item border-r border-border">
+              <span className="stat-row-value text-text-primary">{formatBmi(bmiStats.min)}</span>
+              <span className="stat-row-label">Minimum</span>
+            </div>
+            <div className="stat-row-item border-r border-border">
+              <span className="stat-row-value text-text-primary">{formatBmi(bmiStats.avg)}</span>
+              <span className="stat-row-label">Moyenne</span>
+            </div>
+            <div className="stat-row-item">
+              <span className={`stat-row-value ${bmiDeltaColor}`}>{bmiDeltaLabel}</span>
+              <span className="stat-row-label">Évolution</span>
+            </div>
+          </div>
+        ) : settings.height <= 0 ? (
+          <p className="mt-4 text-[13px] text-text-tertiary">
+            Renseignez votre taille dans les paramètres pour suivre l&apos;évolution de l&apos;IMC.
+          </p>
+        ) : null}
       </div>
 
+      {settings.height > 0 ? (
+        <div className="card-base animate-fade-up animate-stagger-3">
+          <p className="mb-4 text-sm font-medium text-text-primary">Évolution de l&apos;IMC</p>
+          <BmiChart data={bmiHistory} movingAverage={bmiMovingAverage} />
+        </div>
+      ) : null}
+
       {/* Quick stats */}
-      <div className="card-base animate-fade-up animate-stagger-3">
+      <div className="card-base animate-fade-up animate-stagger-4">
         <div className="flex items-center">
           <div className="stat-row-item border-r border-border">
-            <span className="stat-row-value text-text-primary">{weights.length ? min.toFixed(1).replace('.', ',') : '—'}</span>
+            <span className="stat-row-value text-text-primary">{weights.length ? minWeight.toFixed(1).replace('.', ',') : '—'}</span>
             <span className="stat-row-label">Minimum</span>
           </div>
           <div className="stat-row-item border-r border-border">
-            <span className="stat-row-value text-text-primary">{weights.length ? avg.toFixed(1).replace('.', ',') : '—'}</span>
+            <span className="stat-row-value text-text-primary">{weights.length ? avgWeight.toFixed(1).replace('.', ',') : '—'}</span>
             <span className="stat-row-label">Moyenne</span>
           </div>
           <div className="stat-row-item">
@@ -135,7 +193,7 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
 
       {/* Plan section */}
       {plan ? (
-        <div className="animate-fade-up animate-stagger-4 space-y-3">
+        <div className="animate-fade-up animate-stagger-5 space-y-3">
           <div className="flex items-center justify-between">
             <p className="section-label">Plan</p>
             <button
@@ -184,7 +242,7 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
           </div>
         </div>
       ) : entries.length > 0 ? (
-        <div className="card-base animate-fade-up animate-stagger-4 flex flex-col items-center py-8 text-center">
+        <div className="card-base animate-fade-up animate-stagger-5 flex flex-col items-center py-8 text-center">
           <p className="text-[14px] font-medium text-text-primary">Pas encore de plan</p>
           <p className="mt-1.5 text-[13px] text-text-tertiary">Définissez un rythme pour voir vos jalons.</p>
           {projectedDate ? (

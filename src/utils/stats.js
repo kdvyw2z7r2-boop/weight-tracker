@@ -1,9 +1,91 @@
 import { format, startOfMonth, subDays } from 'date-fns'
+import { toChartLabel } from './weightPlan'
 
-export function getBmi(weight, heightCm) {
+const LBS_TO_KG = 2.20462
+
+export const BMI_ZONES = [
+  { label: 'Maigreur', min: 0, max: 18.5, color: '#38BDF8' },
+  { label: 'Normal', min: 18.5, max: 25, color: '#4ADE80' },
+  { label: 'Surpoids', min: 25, max: 30, color: '#FBBF24' },
+  { label: 'Obésité', min: 30, max: 40, color: '#F87171' },
+]
+
+export const BMI_GAUGE_MAX = 40
+
+function toKg(weight, unit = 'kg') {
+  if (!Number.isFinite(weight)) return null
+  return unit === 'lbs' ? weight / LBS_TO_KG : weight
+}
+
+export function getBmi(weight, heightCm, unit = 'kg') {
   if (!heightCm || !weight) return null
+  const weightKg = toKg(weight, unit)
+  if (weightKg == null) return null
   const h = heightCm / 100
-  return weight / (h * h)
+  return weightKg / (h * h)
+}
+
+export function getBmiMarkerPercent(bmi, gaugeMax = BMI_GAUGE_MAX) {
+  if (bmi == null || Number.isNaN(bmi)) return 0
+  return Math.max(0, Math.min(100, (bmi / gaugeMax) * 100))
+}
+
+export function getBmiZoneWidths(gaugeMax = BMI_GAUGE_MAX) {
+  return BMI_ZONES.map((zone) => ({
+    ...zone,
+    widthPercent: ((zone.max - zone.min) / gaugeMax) * 100,
+  }))
+}
+
+export function getBmiHistory(entries, heightCm, unit = 'kg') {
+  if (!heightCm || !entries?.length) return []
+
+  return [...entries]
+    .sort((a, b) => (a.date > b.date ? 1 : -1))
+    .map((entry) => {
+      const bmi = getBmi(entry.weight, heightCm, unit)
+      if (bmi == null) return null
+      return {
+        date: entry.date,
+        label: toChartLabel(entry.date),
+        bmi: Number(bmi.toFixed(1)),
+      }
+    })
+    .filter(Boolean)
+}
+
+export function getBmiStats(entries, heightCm, unit = 'kg') {
+  const history = getBmiHistory(entries, heightCm, unit)
+  if (!history.length) {
+    return { current: null, min: null, max: null, avg: null, delta: null, count: 0 }
+  }
+
+  const values = history.map((point) => point.bmi)
+  const current = values.at(-1)
+  const oldest = values[0]
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const avg = values.reduce((sum, value) => sum + value, 0) / values.length
+  const delta = values.length > 1 ? current - oldest : null
+
+  return {
+    current,
+    min,
+    max,
+    avg: Number(avg.toFixed(1)),
+    delta: delta != null ? Number(delta.toFixed(1)) : null,
+    count: history.length,
+  }
+}
+
+export function getBmiMovingAverage(history, windowSize = 7) {
+  if (!history?.length) return []
+
+  return history.map((entry, index) => {
+    const window = history.slice(Math.max(0, index - windowSize + 1), index + 1)
+    const avg = window.reduce((sum, item) => sum + item.bmi, 0) / window.length
+    return { date: entry.date, avg: Number(avg.toFixed(1)) }
+  })
 }
 
 export function getBmiCategory(bmi) {
