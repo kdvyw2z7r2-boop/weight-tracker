@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 const tabs = [
   {
     id: 'dashboard',
-    label: 'Poids',
+    label: 'Dashboard',
     icon: () => (
       <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.75">
         <rect x="3" y="10" width="18" height="10" rx="2" />
@@ -70,7 +70,7 @@ function BottomNav({ current, onChange }) {
   }, [current])
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-bg-nav/97 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl" style={{ borderColor: 'rgba(0,229,255,0.15)' }}>
+    <nav className="nav-glass fixed bottom-0 left-0 right-0 z-20 pb-[env(safe-area-inset-bottom)]">
       <div ref={containerRef} className="relative mx-auto grid h-16 w-full max-w-md grid-cols-4">
         <span
           className="nav-indicator absolute top-0 h-[2px] rounded-full transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
