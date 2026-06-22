@@ -28,7 +28,7 @@ function CustomTooltip({ active, payload, unit }) {
         <p className="mt-0.5 text-[12px] text-accent-green">Moy. : {point.avg} {unit}</p>
       ) : null}
       {point.projected ? (
-        <p className="mt-0.5 text-[12px] text-[#A78BFA]">Projection plan</p>
+        <p className="mt-0.5 text-[12px] text-accent-purple">Projection plan</p>
       ) : null}
     </div>
   )
@@ -38,7 +38,7 @@ function CheckpointMarker({ cx, cy }) {
   if (cx == null || cy == null) return null
   return (
     <g transform={`translate(${cx}, ${cy})`}>
-      <circle r={8} fill="#141414" stroke="#A78BFA" strokeWidth={1.5} />
+      <circle r={8} fill="#0f0f0f" stroke="#bf00ff" strokeWidth={1.5} />
       <text y={3} textAnchor="middle" fontSize={9}>
         🏁
       </text>
@@ -101,11 +101,15 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
         <ComposedChart data={chartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(96,165,250,0.25)" />
-              <stop offset="100%" stopColor="rgba(96,165,250,0)" />
+              <stop offset="0%" stopColor="rgba(0,229,255,0.3)" />
+              <stop offset="100%" stopColor="rgba(0,229,255,0)" />
+            </linearGradient>
+            <linearGradient id="weightStroke" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#00e5ff" />
+              <stop offset="100%" stopColor="#bf00ff" />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,229,255,0.06)" vertical={false} />
           <XAxis
             dataKey="label"
             stroke="#4B5563"
@@ -128,19 +132,19 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
           {Number.isFinite(targetWeight) ? (
             <ReferenceLine
               y={targetWeight}
-              stroke="#4B5563"
+              stroke="rgba(255,170,0,0.5)"
               strokeDasharray="4 4"
-              label={{ value: 'Objectif', position: 'insideTopRight', fill: '#4B5563', fontSize: 10 }}
+              label={{ value: 'Objectif', position: 'insideTopRight', fill: '#ffaa00', fontSize: 10 }}
             />
           ) : null}
           <Area
             type="monotone"
             dataKey="weight"
-            stroke="#60A5FA"
-            strokeWidth={2}
+            stroke="url(#weightStroke)"
+            strokeWidth={2.5}
             fill="url(#weightGradient)"
-            dot={{ r: 3, fill: '#60A5FA', strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: '#60A5FA', stroke: '#fff', strokeWidth: 2 }}
+            dot={{ r: 3, fill: '#00e5ff', strokeWidth: 0 }}
+            activeDot={{ r: 6, fill: '#00e5ff', stroke: '#fff', strokeWidth: 2 }}
             animationDuration={800}
             animationEasing="ease-out"
             connectNulls={false}
@@ -149,7 +153,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
             <Line
               type="monotone"
               dataKey="projection"
-              stroke="#A78BFA"
+              stroke="#bf00ff"
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}
@@ -160,7 +164,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
           <Line
             type="monotone"
             dataKey="avg"
-            stroke="#4ADE80"
+            stroke="#39ff14"
             strokeWidth={2}
             strokeDasharray="6 4"
             dot={false}

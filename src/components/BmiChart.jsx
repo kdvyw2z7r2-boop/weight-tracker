@@ -58,11 +58,15 @@ function BmiChart({ data, movingAverage = [] }) {
         <ComposedChart data={chartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="bmiGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(56,189,248,0.25)" />
-              <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+              <stop offset="0%" stopColor="rgba(0,229,255,0.35)" />
+              <stop offset="100%" stopColor="rgba(0,229,255,0)" />
+            </linearGradient>
+            <linearGradient id="bmiStroke" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#00e5ff" />
+              <stop offset="100%" stopColor="#39ff14" />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,229,255,0.06)" vertical={false} />
           <XAxis
             dataKey="label"
             stroke="#4B5563"
@@ -93,11 +97,11 @@ function BmiChart({ data, movingAverage = [] }) {
           <Area
             type="monotone"
             dataKey="bmi"
-            stroke="#38BDF8"
-            strokeWidth={2}
+            stroke="url(#bmiStroke)"
+            strokeWidth={2.5}
             fill="url(#bmiGradient)"
-            dot={{ r: 3, fill: '#38BDF8', strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: '#38BDF8', stroke: '#fff', strokeWidth: 2 }}
+            dot={{ r: 3, fill: '#00e5ff', strokeWidth: 0 }}
+            activeDot={{ r: 6, fill: '#00e5ff', stroke: '#fff', strokeWidth: 2 }}
             animationDuration={800}
             animationEasing="ease-out"
             connectNulls={false}
@@ -105,7 +109,7 @@ function BmiChart({ data, movingAverage = [] }) {
           <Line
             type="monotone"
             dataKey="avg"
-            stroke="#4ADE80"
+            stroke="#39ff14"
             strokeWidth={2}
             strokeDasharray="6 4"
             dot={false}

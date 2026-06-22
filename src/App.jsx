@@ -160,7 +160,9 @@ function App() {
 
   return (
     <div className="relative min-h-screen bg-bg-primary text-text-primary">
+      <div className="grid-overlay" aria-hidden="true" />
       <div className="ambient-glow" aria-hidden="true" />
+      <div className="scanline-overlay" aria-hidden="true" />
       <main className="relative z-10 mx-auto w-full max-w-md px-4 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] pt-4">
         <InstallAppTutorial />
         {sync.error ? (
