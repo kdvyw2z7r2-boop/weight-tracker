@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { localIsoDate } from '../utils/dates'
-import { msUntilReminder, shouldRemind } from '../utils/reminder'
+import { msUntilNextReminder, shouldRemind } from '../utils/reminder'
 import useToast from './useToast'
 
 const STORAGE_KEY = 'wt_last_reminder'
@@ -53,12 +53,11 @@ export default function useDailyReminder({ settings, entries, onAdd, ready = tru
   useEffect(() => {
     if (!enabled) return undefined
     let timer = null
-    let cancelled = false
 
     const check = async () => {
       const now = new Date()
       const today = localIsoDate(now)
-      const { entries: list, onAdd: add, show: toast } = latest.current
+      const { entries: list } = latest.current
       const due = shouldRemind({
         now,
         reminderTime,
@@ -69,17 +68,23 @@ export default function useDailyReminder({ settings, entries, onAdd, ready = tru
       if (!due) return
       writeLast(today)
       const sent = await showSystemNotification()
-      if (cancelled || sent) return
-      toast("Pense à enregistrer ton poids aujourd'hui.", {
-        action: { label: 'Ajouter', onClick: () => add?.() },
+      if (sent) return
+      const { onAdd: addNow, show: toastNow } = latest.current
+      toastNow("Pense à enregistrer ton poids aujourd'hui.", {
+        action: { label: 'Ajouter', onClick: () => addNow?.() },
         duration: 8000,
       })
     }
 
     const arm = () => {
       clearTimeout(timer)
-      const delay = msUntilReminder(new Date(), reminderTime)
-      if (delay != null) timer = setTimeout(() => { check(); }, delay + 250)
+      const delay = msUntilNextReminder(new Date(), reminderTime)
+      if (delay != null) {
+        timer = setTimeout(() => {
+          check()
+          arm()
+        }, delay + 250)
+      }
     }
 
     const onVisible = () => {
@@ -93,7 +98,6 @@ export default function useDailyReminder({ settings, entries, onAdd, ready = tru
     arm()
     document.addEventListener('visibilitychange', onVisible)
     return () => {
-      cancelled = true
       clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }

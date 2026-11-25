@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { msUntilReminder, shouldRemind } from './reminder'
+import { msUntilNextReminder, msUntilReminder, shouldRemind } from './reminder'
 
 const base = {
   now: new Date(2026, 10, 25, 9, 0, 0),
@@ -46,5 +46,21 @@ describe('msUntilReminder', () => {
   })
   it('null si heure invalide', () => {
     expect(msUntilReminder(new Date(2026, 10, 25, 7, 0, 0), 'x')).toBeNull()
+  })
+})
+
+describe('msUntilNextReminder', () => {
+  it('aujourd\'hui si l\'heure n\'est pas passée', () => {
+    expect(msUntilNextReminder(new Date(2026, 10, 25, 7, 0, 0), '08:00')).toBe(3600000)
+  })
+  it('demain si l\'heure est passée ou atteinte', () => {
+    expect(msUntilNextReminder(new Date(2026, 10, 25, 9, 0, 0), '08:00')).toBe(23 * 3600000)
+    expect(msUntilNextReminder(new Date(2026, 10, 25, 8, 0, 0), '08:00')).toBe(24 * 3600000)
+  })
+  it('passe la fin de mois', () => {
+    expect(msUntilNextReminder(new Date(2026, 10, 30, 23, 0, 0), '08:00')).toBe(9 * 3600000)
+  })
+  it('null si heure invalide', () => {
+    expect(msUntilNextReminder(new Date(2026, 10, 25, 7, 0, 0), 'x')).toBeNull()
   })
 })
