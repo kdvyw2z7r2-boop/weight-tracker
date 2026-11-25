@@ -600,13 +600,16 @@ function useSync(userId) {
     [entries, settings, persist],
   )
 
-  const deleteEntry = useCallback(
-    async (id) => {
-      const next = entries.filter((entry) => entry.id !== id)
+  const deleteEntries = useCallback(
+    async (ids) => {
+      const toRemove = new Set(ids)
+      const next = entries.filter((entry) => !toRemove.has(entry.id))
       await persist(next, settings)
     },
     [entries, settings, persist],
   )
+
+  const deleteEntry = useCallback((id) => deleteEntries([id]), [deleteEntries])
 
   const updateSettings = useCallback(
     async (patch) => {
@@ -720,6 +723,7 @@ function useSync(userId) {
       addEntry,
       updateEntry,
       deleteEntry,
+      deleteEntries,
       updateSettings,
       resetSettings,
       clearAllData,
@@ -748,6 +752,7 @@ function useSync(userId) {
       addEntry,
       updateEntry,
       deleteEntry,
+      deleteEntries,
       updateSettings,
       resetSettings,
       clearAllData,

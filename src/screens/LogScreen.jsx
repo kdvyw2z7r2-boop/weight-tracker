@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import EntryCard from '../components/EntryCard'
 import usePendingDelete from '../hooks/usePendingDelete'
 import { useToast } from '../hooks/useToast'
@@ -6,22 +6,9 @@ import { formatMonthYear } from '../utils/locale'
 
 const UNDO_DELAY_MS = 5000
 
-function LogScreen({ entries, deleteEntry, onAdd, onPhotoPress, hasPhotoForDate, unit }) {
+function LogScreen({ entries, deleteEntries, onAdd, onPhotoPress, hasPhotoForDate, unit }) {
   const { show, dismiss } = useToast()
-  const { pendingIds, schedule, undo, hasPending } = usePendingDelete(deleteEntry, UNDO_DELAY_MS)
-  const hasPendingRef = useRef(hasPending)
-  const dismissRef = useRef(dismiss)
-  useEffect(() => {
-    hasPendingRef.current = hasPending
-    dismissRef.current = dismiss
-  })
-  // Au démontage, les suppressions en attente sont validées : le toast "Annuler" n'a plus d'effet.
-  useEffect(
-    () => () => {
-      if (hasPendingRef.current()) dismissRef.current()
-    },
-    [],
-  )
+  const { pendingIds, schedule, undo } = usePendingDelete(deleteEntries, UNDO_DELAY_MS, dismiss)
 
   const handleDelete = (id) => {
     schedule(id)

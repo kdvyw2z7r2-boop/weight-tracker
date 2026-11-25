@@ -12,7 +12,7 @@ describe('createPendingQueue', () => {
     vi.advanceTimersByTime(4999)
     expect(onCommit).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
-    expect(onCommit).toHaveBeenCalledWith('a')
+    expect(onCommit).toHaveBeenCalledWith(['a'])
     expect(q.size()).toBe(0)
   })
 
@@ -26,14 +26,25 @@ describe('createPendingQueue', () => {
     expect(q.undo('a')).toBe(false)
   })
 
-  it('flush commits all pending immediately, once', () => {
+  it('flush commits all pending ids in a single call, once', () => {
     const onCommit = vi.fn()
     const q = createPendingQueue(onCommit, 5000)
     q.schedule('a')
     q.schedule('b')
     q.flush()
-    expect(onCommit.mock.calls.map((c) => c[0]).sort()).toEqual(['a', 'b'])
+    expect(onCommit).toHaveBeenCalledTimes(1)
+    expect([...onCommit.mock.calls[0][0]].sort()).toEqual(['a', 'b'])
     vi.advanceTimersByTime(10000)
-    expect(onCommit).toHaveBeenCalledTimes(2)
+    expect(onCommit).toHaveBeenCalledTimes(1)
+  })
+
+  it('flush calls onFlush before committing, and not when empty', () => {
+    const order = []
+    const q = createPendingQueue(() => order.push('commit'), 5000, () => order.push('flush'))
+    q.flush()
+    expect(order).toEqual([])
+    q.schedule('a')
+    q.flush()
+    expect(order).toEqual(['flush', 'commit'])
   })
 })
