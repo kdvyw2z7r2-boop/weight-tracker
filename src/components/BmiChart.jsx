@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { BMI_ZONES } from '../utils/stats'
 import { CHART_COLORS as C } from '../utils/chartColors'
+import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion'
 
 function BmiTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
@@ -32,6 +33,7 @@ function BmiTooltip({ active, payload }) {
 }
 
 function BmiChart({ data, movingAverage = [] }) {
+  const reducedMotion = usePrefersReducedMotion()
   const chartData = useMemo(
     () =>
       data.map((entry) => ({
@@ -99,6 +101,7 @@ function BmiChart({ data, movingAverage = [] }) {
             fill="url(#bmiGradient)"
             dot={{ r: 3, fill: C.weight, strokeWidth: 0 }}
             activeDot={{ r: 5, fill: C.weight, stroke: C.text, strokeWidth: 2 }}
+            isAnimationActive={!reducedMotion}
             animationDuration={800}
             animationEasing="ease-out"
             connectNulls={false}
@@ -111,6 +114,7 @@ function BmiChart({ data, movingAverage = [] }) {
             strokeDasharray="6 4"
             dot={false}
             connectNulls
+            isAnimationActive={!reducedMotion}
             animationDuration={900}
           />
         </ComposedChart>

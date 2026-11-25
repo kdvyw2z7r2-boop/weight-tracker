@@ -8,9 +8,17 @@ export function parseBoundedNumber(raw, { min, max }) {
 
 // Number to commit, or null when nothing should be saved (invalid, or unchanged
 // from what the field displayed / from the stored value).
-export function resolveCommit(draft, { display, value, min, max }) {
+// `decimals` rounds the parsed value to the field's display precision so that
+// what is stored equals what is shown.
+export function resolveCommit(draft, { display, value, min, max, decimals }) {
   if (draft === display) return null
   const parsed = parseBoundedNumber(draft, { min, max })
-  if (parsed === null || parsed === Number(value)) return null
-  return parsed
+  if (parsed === null) return null
+  const next = decimals == null ? parsed : roundToDecimals(parsed, decimals)
+  return next === Number(value) ? null : next
+}
+
+export function roundToDecimals(value, decimals) {
+  const factor = 10 ** decimals
+  return Math.round(value * factor) / factor
 }

@@ -174,6 +174,7 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
             value={settings.height}
             min={120}
             max={230}
+            decimals={0}
             format={(v) => String(Math.round(Number(v)))}
             onCommit={(height) => updateSettings({ height })}
           />
@@ -182,6 +183,7 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
             value={settings.targetWeight}
             min={settings.unit === 'lbs' ? 66 : 30}
             max={settings.unit === 'lbs' ? 550 : 250}
+            decimals={1}
             format={formatWeight}
             onCommit={(targetWeight) => updateSettings({ targetWeight })}
           />

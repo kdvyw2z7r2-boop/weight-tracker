@@ -8,7 +8,7 @@
   --color-border: rgba(0, 229, 255, 0.12);
   --color-text-primary: #ffffff;
   --color-text-secondary: #a0a0a0;
-  --color-text-tertiary: #505050;
+  --color-text-tertiary: #808080;
   --color-accent-green: #39ff14;
   --color-accent-red: #ff3131;
   --color-accent-blue: #00e5ff;
@@ -403,6 +403,12 @@ body {
     transform: translateY(calc(100% + var(--nav-h) + 32px));
     opacity: 0;
     pointer-events: none;
+    visibility: hidden;
+    transition:
+      transform 200ms var(--ease-spring),
+      opacity 150ms ease,
+      box-shadow 200ms ease,
+      visibility 0s linear 200ms;
   }
 
   .fab:active {
@@ -480,7 +486,7 @@ body {
 
   .badge-neon-neutral {
     background: rgba(255, 255, 255, 0.05);
-    color: #505050;
+    color: var(--color-text-tertiary);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 }
@@ -492,5 +498,18 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .card-electric,
+  .animate-pulse-soft,
+  .animate-float {
+    animation: none !important;
+  }
+
+  .animate-page-enter,
+  .animate-fade-up,
+  .animate-scale-in {
+    animation: none !important;
   }
 }

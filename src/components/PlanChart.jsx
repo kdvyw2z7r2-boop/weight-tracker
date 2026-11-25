@@ -11,6 +11,7 @@ import {
 import { formatDatePlanShort } from '../utils/locale'
 import { formatWeight, toChartLabel } from '../utils/weightPlan'
 import { CHART_COLORS as C } from '../utils/chartColors'
+import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion'
 
 function CheckpointDot({ cx, cy }) {
   if (cx == null || cy == null) return null
@@ -47,6 +48,7 @@ function StartDot({ cx, cy }) {
 }
 
 function PlanChart({ plan, unit = 'kg', compact = false }) {
+  const reducedMotion = usePrefersReducedMotion()
   if (!plan?.trajectory?.length) {
     return (
       <div className="flex h-52 items-center justify-center text-[14px] text-text-tertiary">
@@ -105,6 +107,7 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
             stroke={C.plan}
             strokeWidth={2.5}
             dot={false}
+            isAnimationActive={!reducedMotion}
             animationDuration={800}
           />
           {startPoint ? (

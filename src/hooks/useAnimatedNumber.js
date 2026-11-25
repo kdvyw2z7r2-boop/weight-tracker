@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
+import usePrefersReducedMotion from './usePrefersReducedMotion'
 
 export default function useAnimatedNumber(target, duration = 700) {
+  const reduced = usePrefersReducedMotion()
   const [display, setDisplay] = useState(target)
   const frameRef = useRef(null)
   const startRef = useRef(null)
   const fromRef = useRef(target)
 
   useEffect(() => {
+    if (reduced) {
+      fromRef.current = target
+      return undefined
+    }
     if (target === fromRef.current) return undefined
 
     const from = fromRef.current
@@ -31,7 +37,7 @@ export default function useAnimatedNumber(target, duration = 700) {
     return () => {
       if (frameRef.current) cancelAnimationFrame(frameRef.current)
     }
-  }, [target, duration])
+  }, [target, duration, reduced])
 
-  return display
+  return reduced ? target : display
 }

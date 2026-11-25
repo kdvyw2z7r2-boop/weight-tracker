@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseBoundedNumber, resolveCommit } from './number'
+import { parseBoundedNumber, resolveCommit, roundToDecimals } from './number'
 
 const bounds = { min: 30, max: 250 }
 
@@ -41,5 +41,26 @@ describe('resolveCommit', () => {
   it('ne valide pas hors bornes ou vide', () => {
     expect(resolveCommit('', { display: '72,5', value: 72.5, ...b })).toBeNull()
     expect(resolveCommit('900', { display: '72,5', value: 72.5, ...b })).toBeNull()
+  })
+})
+
+describe('roundToDecimals', () => {
+  it('arrondit à la précision demandée', () => {
+    expect(roundToDecimals(72.46, 1)).toBe(72.5)
+    expect(roundToDecimals(180.4, 0)).toBe(180)
+    expect(roundToDecimals(180.5, 0)).toBe(181)
+  })
+})
+
+describe('resolveCommit avec decimals', () => {
+  const b = { min: 120, max: 230 }
+  it('arrondit à l\'entier pour la taille', () => {
+    expect(resolveCommit('180,6', { display: '180', value: 180, decimals: 0, ...b })).toBe(181)
+  })
+  it('arrondit à 1 décimale pour le poids', () => {
+    expect(resolveCommit('72,46', { display: '72,0', value: 72, min: 30, max: 250, decimals: 1 })).toBe(72.5)
+  })
+  it('ne valide pas si l\'arrondi égale la valeur stockée', () => {
+    expect(resolveCommit('180,2', { display: '180', value: 180, decimals: 0, ...b })).toBeNull()
   })
 })

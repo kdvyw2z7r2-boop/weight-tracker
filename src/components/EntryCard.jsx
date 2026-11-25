@@ -27,6 +27,7 @@ function EntryCard({
   unit = 'kg',
   index = 0,
 }) {
+  const dateLabel = formatDateEntry(entry.date)
   const delta = previous ? entry.weight - previous.weight : null
   const deltaBadgeClass =
     delta === null
@@ -40,22 +41,22 @@ function EntryCard({
       className="press-card animate-fade-up relative rounded-2xl border border-border bg-bg-card px-5 py-4"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      <div className="absolute right-4 top-4 flex items-center gap-1">
+      <div className="absolute right-1 top-1 flex items-center">
         <button
           type="button"
           onClick={() => onPhotoPress?.(entry)}
-          className={`press-button rounded-lg p-1.5 transition duration-150 ${
+          className={`press-button flex h-11 w-11 items-center justify-center rounded-lg transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent-blue ${
             hasPhoto ? 'text-white hover:bg-bg-elevated' : 'text-text-tertiary hover:text-text-secondary'
           }`}
-          aria-label={hasPhoto ? 'Voir la photo' : 'Ajouter une photo'}
+          aria-label={`${hasPhoto ? 'Voir la photo du' : 'Ajouter une photo du'} ${dateLabel}`}
         >
           <CameraIcon active={hasPhoto} />
         </button>
         <button
           type="button"
           onClick={() => onDelete(entry.id)}
-          className="press-button rounded-lg p-1.5 text-text-tertiary transition duration-150 hover:text-text-secondary"
-          aria-label="Supprimer l'entrée"
+          className="press-button flex h-11 w-11 items-center justify-center rounded-lg text-text-tertiary transition duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent-blue"
+          aria-label={`Supprimer la pesée du ${dateLabel}`}
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none" stroke="currentColor" strokeWidth="1.75">
             <path d="M3 6h18" />
@@ -66,9 +67,9 @@ function EntryCard({
         </button>
       </div>
 
-      <div className="flex items-end justify-between pr-16">
+      <div className="flex items-end justify-between pr-24">
         <div>
-          <p className="text-[12px] font-medium tracking-wide uppercase text-text-tertiary">{formatDateEntry(entry.date)}</p>
+          <p className="text-[12px] font-medium tracking-wide uppercase text-text-tertiary">{dateLabel}</p>
           <p className="mt-1 whitespace-nowrap text-[24px] font-black leading-tight tabular-nums text-white" style={{ letterSpacing: '-1px' }}>
             {formatWeight(entry.weight)}{"\u00A0"}<span className="text-[14px] font-bold text-text-tertiary">{unit}</span>
           </p>

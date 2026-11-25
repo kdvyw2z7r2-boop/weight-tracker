@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { formatWeightWithUnit } from '../utils/format'
+import { formatWeight, formatWeightWithUnit } from '../utils/format'
 import {
   Area,
   CartesianGrid,
@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import { toChartLabel } from '../utils/weightPlan'
 import { CHART_COLORS as C } from '../utils/chartColors'
+import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion'
 
 function CustomTooltip({ active, payload, unit }) {
   if (!active || !payload?.length) return null
@@ -49,6 +50,7 @@ function CheckpointMarker({ cx, cy }) {
 }
 
 function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = null }) {
+  const reducedMotion = usePrefersReducedMotion()
   const chartData = useMemo(() => {
     const historical = data.map((entry) => ({
       ...entry,
@@ -124,7 +126,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
             axisLine={false}
             tickLine={false}
             width={32}
-            tickFormatter={(v) => v.toString().replace('.', ',')}
+            tickFormatter={formatWeight}
           />
           <Tooltip content={<CustomTooltip unit={unit} />} cursor={{ stroke: 'rgba(255,255,255,0.1)' }} />
           {Number.isFinite(targetWeight) ? (
@@ -143,6 +145,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
             fill="url(#weightGradient)"
             dot={{ r: 3, fill: C.weight, strokeWidth: 0 }}
             activeDot={{ r: 5, fill: C.weight, stroke: C.text, strokeWidth: 2 }}
+            isAnimationActive={!reducedMotion}
             animationDuration={800}
             animationEasing="ease-out"
             connectNulls={false}
@@ -156,6 +159,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
               strokeDasharray="4 4"
               dot={false}
               connectNulls
+              isAnimationActive={!reducedMotion}
               animationDuration={900}
             />
           ) : null}
@@ -167,6 +171,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
             strokeDasharray="6 4"
             dot={false}
             connectNulls
+            isAnimationActive={!reducedMotion}
             animationDuration={900}
           />
           {plan?.checkpoints?.map((cp) => (

@@ -31,8 +31,7 @@ const round = (value) => Math.round(value * 100) / 100
 const sortByDateDesc = (items) =>
   [...items].sort((a, b) => (a.date < b.date ? 1 : -1))
 
-const photoUnavailableMessage =
-  'Les photos nécessitent Supabase. Configurez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.'
+const photoUnavailableMessage = 'Photos indisponibles hors connexion au cloud.'
 
 function formatStorageError(error) {
   const message = error?.message ?? ''

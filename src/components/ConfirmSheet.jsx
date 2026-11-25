@@ -12,11 +12,13 @@ function ConfirmSheet({
   const [render, setRender] = useState(false)
   const [visible, setVisible] = useState(false)
   const cancelRef = useRef(null)
+  const returnFocusRef = useRef(null)
   const titleId = useId()
   const messageId = useId()
 
   useEffect(() => {
     if (open) {
+      returnFocusRef.current = document.activeElement
       // eslint-disable-next-line react-hooks/set-state-in-effect -- modal mount animation
       setRender(true)
       document.body.style.overflow = 'hidden'
@@ -29,6 +31,9 @@ function ConfirmSheet({
       }
     }
     setVisible(false)
+    const toRestore = returnFocusRef.current
+    returnFocusRef.current = null
+    if (toRestore instanceof HTMLElement && toRestore.isConnected) toRestore.focus()
     const timer = setTimeout(() => setRender(false), 300)
     return () => clearTimeout(timer)
   }, [open])
@@ -52,7 +57,12 @@ function ConfirmSheet({
     tone === 'danger' ? 'bg-accent-red text-white' : 'bg-accent-green text-bg-primary'
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center">
+    <div
+      className={`fixed inset-0 z-40 flex items-end justify-center sm:items-center ${
+        open ? '' : 'pointer-events-none'
+      }`}
+      inert={!open}
+    >
       <button
         type="button"
         tabIndex={-1}

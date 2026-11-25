@@ -161,6 +161,22 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
               unit={settings.unit}
               plan={weightPlan}
             />
+            <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[12px] text-text-secondary" aria-label="Légende du graphique">
+              <li className="flex items-center gap-1.5">
+                <span className="h-0.5 w-4 rounded-full bg-weight" aria-hidden="true" />
+                Poids
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="h-0.5 w-4 rounded-full bg-avg" aria-hidden="true" />
+                Moyenne 7 j
+              </li>
+              {weightPlan ? (
+                <li className="flex items-center gap-1.5">
+                  <span className="h-0.5 w-4 rounded-full bg-plan" aria-hidden="true" />
+                  Plan
+                </li>
+              ) : null}
+            </ul>
           </div>
 
           <ProgressCompare photosByDate={photosByDate} entries={entries} unit={settings.unit} />

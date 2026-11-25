@@ -4,7 +4,7 @@ import { resolveCommit } from '../utils/number'
 const inputClass =
   'h-12 w-full rounded-xl border border-transparent bg-bg-card px-4 text-base text-white outline-none transition duration-200 focus:border-white/20'
 
-function NumberField({ label, value, min, max, format, onCommit }) {
+function NumberField({ label, value, min, max, decimals, format, onCommit }) {
   const id = useId()
   const [focused, setFocused] = useState(false)
   const display = format(value)
@@ -18,7 +18,7 @@ function NumberField({ label, value, min, max, format, onCommit }) {
   }
 
   const commit = () => {
-    const next = resolveCommit(draft, { display, value, min, max })
+    const next = resolveCommit(draft, { display, value, min, max, decimals })
     if (next === null) {
       setDraft(display)
       return
