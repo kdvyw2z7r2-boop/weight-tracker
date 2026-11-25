@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { formatDateEntry } from '../utils/locale'
 import { formatWeight, formatWeightWithUnit } from '../utils/format'
 
@@ -28,7 +27,6 @@ function EntryCard({
   unit = 'kg',
   index = 0,
 }) {
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const delta = previous ? entry.weight - previous.weight : null
   const deltaBadgeClass =
     delta === null
@@ -55,7 +53,7 @@ function EntryCard({
         </button>
         <button
           type="button"
-          onClick={() => setIsConfirmingDelete(true)}
+          onClick={() => onDelete(entry.id)}
           className="press-button rounded-lg p-1.5 text-text-tertiary transition duration-150 hover:text-text-secondary"
           aria-label="Supprimer l'entrée"
         >
@@ -85,31 +83,6 @@ function EntryCard({
       </div>
 
       {entry.note ? <p className="mt-3 text-[13px] italic text-text-tertiary">{entry.note}</p> : null}
-
-      {isConfirmingDelete ? (
-        <div className="mt-4 animate-scale-in flex items-center justify-between rounded-xl bg-bg-elevated p-3 text-sm">
-          <p className="text-text-secondary">Confirmer la suppression ?</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                onDelete(entry.id)
-                setIsConfirmingDelete(false)
-              }}
-              className="press-button rounded-lg bg-accent-red px-3 py-1.5 font-medium text-white"
-            >
-              Oui
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsConfirmingDelete(false)}
-              className="press-button rounded-lg px-3 py-1.5 text-text-secondary"
-            >
-              Non
-            </button>
-          </div>
-        </div>
-      ) : null}
     </article>
   )
 }

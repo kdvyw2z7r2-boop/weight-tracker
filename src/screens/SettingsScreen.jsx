@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import ConfirmSheet from '../components/ConfirmSheet'
 import ExportButton from '../components/ExportButton'
 import NumberField from '../components/NumberField'
 import { buildChallengeResetPatch, resolveChallengeStart, todayIso } from '../utils/challenge'
+import { useToast } from '../hooks/useToast'
 import { formatDateShort } from '../utils/locale'
 import { formatPace, formatWeight, formatWeightWithUnit } from '../utils/format'
 
@@ -32,22 +34,21 @@ function ChallengeCard({ entries, settings, updateSettings }) {
   const start = resolveChallengeStart(settings, entries)
   const isCustom = Boolean(settings.challengeStartDate)
 
-  const onRestart = async () => {
-    const label = date === today ? "aujourd'hui" : `le ${formatDateShort(date)}`
-    const message =
-      `Recommencer le défi à partir de ${label} ?\n\n` +
-      'Le départ, la progression et le plan repartiront de cette date. ' +
-      'Vos pesées et photos sont conservées dans l\'historique.'
-    if (!window.confirm(message)) return
+  const { show } = useToast()
+  const [confirming, setConfirming] = useState(null)
+  const restartLabel = date === today ? "aujourd'hui" : `le ${formatDateShort(date)}`
+
+  const doRestart = async () => {
+    setConfirming(null)
     try {
       await updateSettings(buildChallengeResetPatch(entries, date, settings))
     } catch {
-      alert('Impossible de redémarrer le défi pour le moment.')
+      show('Impossible de redémarrer le défi pour le moment.', { tone: 'error' })
     }
   }
 
-  const onRestoreOrigin = async () => {
-    if (!window.confirm('Reprendre le défi depuis votre toute première pesée ?')) return
+  const doRestoreOrigin = async () => {
+    setConfirming(null)
     const patch = { challengeStartDate: null, challengeStartWeight: null }
     if (settings.weeklyPace != null) {
       patch.planStartDate = null
@@ -83,7 +84,7 @@ function ChallengeCard({ entries, settings, updateSettings }) {
         </div>
         <button
           type="button"
-          onClick={onRestart}
+          onClick={() => setConfirming('restart')}
           disabled={!entries.length}
           className="press-button h-12 w-full rounded-xl bg-accent-green/15 text-[15px] font-medium text-accent-green disabled:opacity-40"
         >
@@ -92,25 +93,55 @@ function ChallengeCard({ entries, settings, updateSettings }) {
         {isCustom ? (
           <button
             type="button"
-            onClick={onRestoreOrigin}
+            onClick={() => setConfirming('restore')}
             className="press-button w-full text-center text-[13px] text-text-tertiary underline-offset-2 hover:underline"
           >
             Reprendre depuis la première pesée
           </button>
         ) : null}
       </div>
+      <ConfirmSheet
+        open={confirming === 'restart'}
+        title={`Recommencer le défi ${restartLabel} ?`}
+        message="Le départ, la progression et le plan repartiront de cette date. Vos pesées et photos sont conservées dans l'historique."
+        confirmLabel="Recommencer"
+        tone="danger"
+        onConfirm={doRestart}
+        onCancel={() => setConfirming(null)}
+      />
+      <ConfirmSheet
+        open={confirming === 'restore'}
+        title="Reprendre depuis la première pesée ?"
+        message="Le point de départ redeviendra votre toute première pesée."
+        confirmLabel="Reprendre"
+        onConfirm={doRestoreOrigin}
+        onCancel={() => setConfirming(null)}
+      />
     </div>
   )
 }
 
 function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, onEditPlan }) {
+  const { show } = useToast()
+  const [isClearOpen, setIsClearOpen] = useState(false)
+
+  const doClear = async () => {
+    setIsClearOpen(false)
+    try {
+      await entriesApi.clearEntries()
+      resetSettings()
+    } catch {
+      show("Impossible d'effacer les données pour le moment.", { tone: 'error' })
+    }
+  }
+
   const onUnitChange = async (nextUnit) => {
     if (nextUnit === settings.unit) return
 
     try {
       await entriesApi.convertAllUnits(nextUnit)
     } catch {
-      alert('Impossible de convertir les données pour le moment.')
+      show('Impossible de convertir les données pour le moment.', { tone: 'error' })
     }
   }
 
@@ -245,9 +276,9 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
                 try {
                   const data = await entriesApi.importJSON(file)
                   if (data.settings) updateSettings(data.settings)
-                  alert('Import terminé avec succès.')
+                  show('Import terminé avec succès.', { tone: 'success' })
                 } catch {
-                  alert('Fichier d\'import invalide.')
+                  show("Fichier d'import invalide.", { tone: 'error' })
                 }
               }}
             />
@@ -259,20 +290,20 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
         <p className="section-label mb-3">Zone de danger</p>
         <button
           type="button"
-          onClick={async () => {
-            if (!window.confirm('Effacer toutes les données ? Cette action est irréversible.')) return
-
-            try {
-              await entriesApi.clearEntries()
-              resetSettings()
-            } catch {
-              alert("Impossible d'effacer les données pour le moment.")
-            }
-          }}
+          onClick={() => setIsClearOpen(true)}
           className="press-button h-12 w-full rounded-xl border border-accent-red text-base font-medium text-accent-red transition duration-200"
         >
           Effacer toutes les données
         </button>
+        <ConfirmSheet
+          open={isClearOpen}
+          title="Effacer toutes les données ?"
+          message="Cette action est irréversible."
+          confirmLabel="Tout effacer"
+          tone="danger"
+          onConfirm={doClear}
+          onCancel={() => setIsClearOpen(false)}
+        />
       </div>
     </section>
   )

@@ -1,16 +1,49 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import EntryCard from '../components/EntryCard'
+import usePendingDelete from '../hooks/usePendingDelete'
+import { useToast } from '../hooks/useToast'
 import { formatMonthYear } from '../utils/locale'
 
+const UNDO_DELAY_MS = 5000
+
 function LogScreen({ entries, deleteEntry, onAdd, onPhotoPress, hasPhotoForDate, unit }) {
+  const { show, dismiss } = useToast()
+  const { pendingIds, schedule, undo, hasPending } = usePendingDelete(deleteEntry, UNDO_DELAY_MS)
+  const hasPendingRef = useRef(hasPending)
+  const dismissRef = useRef(dismiss)
+  useEffect(() => {
+    hasPendingRef.current = hasPending
+    dismissRef.current = dismiss
+  })
+  // Au démontage, les suppressions en attente sont validées : le toast "Annuler" n'a plus d'effet.
+  useEffect(
+    () => () => {
+      if (hasPendingRef.current()) dismissRef.current()
+    },
+    [],
+  )
+
+  const handleDelete = (id) => {
+    schedule(id)
+    show('Pesée supprimée', {
+      duration: UNDO_DELAY_MS,
+      action: { label: 'Annuler', onClick: () => undo(id) },
+    })
+  }
+
+  const visibleEntries = useMemo(
+    () => entries.filter((entry) => !pendingIds.has(entry.id)),
+    [entries, pendingIds],
+  )
+
   const grouped = useMemo(() => {
-    return entries.reduce((acc, entry) => {
+    return visibleEntries.reduce((acc, entry) => {
       const month = entry.date.slice(0, 7)
       if (!acc[month]) acc[month] = []
       acc[month].push(entry)
       return acc
     }, {})
-  }, [entries])
+  }, [visibleEntries])
 
   return (
     <section className="space-y-4">
@@ -18,7 +51,7 @@ function LogScreen({ entries, deleteEntry, onAdd, onPhotoPress, hasPhotoForDate,
         <div>
           <h2 className="text-[20px] font-black uppercase tracking-tight neon-text-cyan">Journal</h2>
           <p className="mt-0.5 text-[13px] text-text-tertiary">
-            {entries.length} entrée{entries.length !== 1 ? 's' : ''}
+            {visibleEntries.length} entrée{visibleEntries.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button type="button" onClick={onAdd} className="btn-primary h-10 px-5 text-[13px] font-bold tracking-wide">
@@ -26,7 +59,7 @@ function LogScreen({ entries, deleteEntry, onAdd, onPhotoPress, hasPhotoForDate,
         </button>
       </div>
 
-      {!entries.length ? (
+      {!visibleEntries.length ? (
         <div className="card-base animate-fade-up animate-stagger-1 flex flex-col items-center py-12 text-center">
           <div className="empty-state-icon animate-float mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl">
             📋
@@ -45,7 +78,7 @@ function LogScreen({ entries, deleteEntry, onAdd, onPhotoPress, hasPhotoForDate,
                 key={entry.id}
                 entry={entry}
                 previous={monthEntries[index + 1]}
-                onDelete={deleteEntry}
+                onDelete={handleDelete}
                 onPhotoPress={onPhotoPress}
                 hasPhoto={hasPhotoForDate?.(entry.date)}
                 unit={unit}
