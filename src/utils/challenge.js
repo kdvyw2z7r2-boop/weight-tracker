@@ -1,7 +1,7 @@
-import { format } from 'date-fns'
+import { localIsoDate } from './dates'
 
 export function todayIso() {
-  return format(new Date(), 'yyyy-MM-dd')
+  return localIsoDate(new Date())
 }
 
 /** Pesées du défi en cours (tri d'origine conservé). Sans date de défi : toutes les pesées. */

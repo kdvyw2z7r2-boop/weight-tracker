@@ -1,9 +1,10 @@
-import { addDays, format } from 'date-fns'
 import { useMemo, useState } from 'react'
 import BmiChart from '../components/BmiChart'
 import PillSelector from '../components/PillSelector'
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
+import { daysAgoIso } from '../utils/dates'
 import { formatDatePlanShort } from '../utils/locale'
+import { projectGoalDate } from '../utils/projection'
 import {
   BMI_GAUGE_MAX,
   BMI_ZONES,
@@ -42,22 +43,16 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
   const filteredEntries = useMemo(() => {
     const selected = PERIODS.find((item) => item.key === period)
     if (!selected || selected.days === null) return entries
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - selected.days)
-    const cutoffIso = cutoff.toISOString().slice(0, 10)
+    const cutoffIso = daysAgoIso(selected.days)
     return entries.filter((entry) => entry.date >= cutoffIso)
   }, [entries, period])
 
   const weights = filteredEntries.map((entry) => entry.weight)
-  const currentWeight = filteredEntries[0]?.weight ?? 0
   const minWeight = weights.length ? Math.min(...weights) : 0
   const avgWeight = weights.length ? weights.reduce((a, b) => a + b, 0) / weights.length : 0
 
-  const last30 = [...filteredEntries].slice(0, 30)
-  const oldest = last30.at(-1)
-  const dailyRate = oldest ? (currentWeight - oldest.weight) / Math.max(1, last30.length - 1) : 0
-  const daysLeft = dailyRate !== 0 ? Math.abs((currentWeight - settings.targetWeight) / dailyRate) : null
-  const projectedDate = daysLeft ? format(addDays(new Date(), Math.ceil(daysLeft)), 'dd/MM/yyyy') : null
+  const projectedIso = projectGoalDate(filteredEntries, settings.targetWeight).date
+  const projectedDate = projectedIso ? projectedIso.split('-').reverse().join('/') : null
 
   const latestBmi = getBmi(entries[0]?.weight, settings.height, settings.unit)
   const bmiRounded = latestBmi != null ? Number(latestBmi.toFixed(1)) : null
@@ -85,7 +80,7 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
     bmiStats.delta == null ? 'text-text-tertiary' : bmiStats.delta <= 0 ? 'text-accent-green' : 'text-accent-red'
 
   // Plan section
-  const anchor = resolvePlanAnchor(settings, entries)
+  const anchor = useMemo(() => resolvePlanAnchor(settings, entries), [settings, entries])
   const plan = useMemo(() => {
     if (!settings.weeklyPace || !anchor?.startWeight || !anchor?.startDate) return null
     return computeWeightPlan({
