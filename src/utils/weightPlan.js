@@ -45,7 +45,7 @@ export function getPaceRange(unit = 'kg') {
     max: scale(PACE_MAX),
     recommendedMin: scale(PACE_RECOMMENDED_MIN),
     recommendedMax: scale(PACE_RECOMMENDED_MAX),
-    step: unit === 'lbs' ? 0.1 : 0.05,
+    step: unit === 'lbs' ? 0.02 : 0.05,
     defaultPace: scale(DEFAULT_WEEKLY_PACE),
   }
 }

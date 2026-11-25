@@ -71,8 +71,8 @@ function EntryCard({
       <div className="flex items-end justify-between pr-16">
         <div>
           <p className="text-[12px] font-medium tracking-wide uppercase text-text-tertiary">{formatDateEntry(entry.date)}</p>
-          <p className="mt-1 text-[24px] font-black leading-tight tabular-nums text-white" style={{ letterSpacing: '-1px' }}>
-            {formatWeight(entry.weight)} <span className="text-[14px] font-bold text-text-tertiary">{unit}</span>
+          <p className="mt-1 whitespace-nowrap text-[24px] font-black leading-tight tabular-nums text-white" style={{ letterSpacing: '-1px' }}>
+            {formatWeight(entry.weight)}{"\u00A0"}<span className="text-[14px] font-bold text-text-tertiary">{unit}</span>
           </p>
         </div>
         <div className="text-right">
