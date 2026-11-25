@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { msUntilNextReminder, msUntilReminder, shouldRemind } from './reminder'
+import { getReminderStorageKey, msUntilNextReminder, msUntilReminder, shouldRemind } from './reminder'
 
 const base = {
   now: new Date(2026, 10, 25, 9, 0, 0),
@@ -62,5 +62,12 @@ describe('msUntilNextReminder', () => {
   })
   it('null si heure invalide', () => {
     expect(msUntilNextReminder(new Date(2026, 10, 25, 7, 0, 0), 'x')).toBeNull()
+  })
+})
+
+describe('getReminderStorageKey', () => {
+  it('clé distincte par utilisateur', () => {
+    expect(getReminderStorageKey('alice')).toBe('wt_last_reminder:alice')
+    expect(getReminderStorageKey('bob')).not.toBe(getReminderStorageKey('alice'))
   })
 })

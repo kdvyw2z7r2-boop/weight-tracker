@@ -100,6 +100,7 @@ function App() {
   }, [])
 
   useDailyReminder({
+    userId,
     settings,
     entries: sync.entries,
     onAdd: openAddModal,

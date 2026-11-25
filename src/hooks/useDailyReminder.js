@@ -1,21 +1,19 @@
 import { useEffect, useRef } from 'react'
 import { localIsoDate } from '../utils/dates'
-import { msUntilNextReminder, shouldRemind } from '../utils/reminder'
+import { getReminderStorageKey, msUntilNextReminder, shouldRemind } from '../utils/reminder'
 import useToast from './useToast'
 
-const STORAGE_KEY = 'wt_last_reminder'
-
-function readLast() {
+function readLast(userId) {
   try {
-    return localStorage.getItem(STORAGE_KEY)
+    return localStorage.getItem(getReminderStorageKey(userId))
   } catch {
     return null
   }
 }
 
-function writeLast(date) {
+function writeLast(userId, date) {
   try {
-    localStorage.setItem(STORAGE_KEY, date)
+    localStorage.setItem(getReminderStorageKey(userId), date)
   } catch {
     // Stockage indisponible : on ignore.
   }
@@ -40,14 +38,14 @@ async function showSystemNotification() {
 }
 
 /** Rappel local « best effort » : à l'ouverture, au retour au premier plan, et à l'heure choisie si l'app est ouverte. */
-export default function useDailyReminder({ settings, entries, onAdd, ready = true }) {
+export default function useDailyReminder({ userId, settings, entries, onAdd, ready = true }) {
   const { show } = useToast()
   const latest = useRef({})
   useEffect(() => {
     latest.current = { entries, onAdd, show }
   })
 
-  const enabled = ready && Boolean(settings?.reminderEnabled)
+  const enabled = ready && Boolean(userId) && Boolean(settings?.reminderEnabled)
   const reminderTime = settings?.reminderTime
 
   useEffect(() => {
@@ -63,10 +61,10 @@ export default function useDailyReminder({ settings, entries, onAdd, ready = tru
         reminderTime,
         enabled,
         hasEntryToday: (list ?? []).some((entry) => entry.date === today),
-        lastRemindedDate: readLast(),
+        lastRemindedDate: readLast(userId),
       })
       if (!due) return
-      writeLast(today)
+      writeLast(userId, today)
       const sent = await showSystemNotification()
       if (sent) return
       const { onAdd: addNow, show: toastNow } = latest.current
@@ -101,5 +99,5 @@ export default function useDailyReminder({ settings, entries, onAdd, ready = tru
       clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [enabled, reminderTime])
+  }, [enabled, reminderTime, userId])
 }

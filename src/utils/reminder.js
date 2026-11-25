@@ -34,3 +34,8 @@ export function msUntilNextReminder(now, reminderTime) {
   if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 1)
   return target.getTime() - now.getTime()
 }
+
+/** Clé localStorage du dernier rappel envoyé, propre à chaque utilisateur. */
+export function getReminderStorageKey(userId) {
+  return `wt_last_reminder:${userId}`
+}
