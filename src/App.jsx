@@ -29,7 +29,7 @@ function SyncStatusPill({ status }) {
       role="status"
       title={title}
       aria-label={`Hors ligne · données locales. ${title}`}
-      className="flex h-7 min-w-0 items-center gap-1.5 rounded-full bg-bg-elevated px-2.5 text-[11px] font-medium text-text-tertiary"
+      className="flex h-7 min-w-0 items-center gap-1.5 rounded-full bg-bg-elevated px-2.5 text-[11px] font-medium text-text-secondary"
     >
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
       <span className="truncate">Hors ligne · données locales</span>

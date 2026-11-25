@@ -31,9 +31,6 @@ const round = (value) => Math.round(value * 100) / 100
 const sortByDateDesc = (items) =>
   [...items].sort((a, b) => (a.date < b.date ? 1 : -1))
 
-const localFallbackMessage =
-  'Mode local : impossible de joindre le cloud pour le moment. Vos données restent sur cet appareil.'
-
 const photoUnavailableMessage =
   'Les photos nécessitent Supabase. Configurez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.'
 
@@ -531,7 +528,7 @@ function useSync(userId) {
         return uploaded
       } catch (uploadError) {
         setStorageMode('local')
-        const message = uploadError.message || localFallbackMessage
+        const message = uploadError.message || 'Impossible d\'envoyer la photo.'
         setError(message)
         throw new Error(message, { cause: uploadError })
       } finally {
@@ -564,7 +561,7 @@ function useSync(userId) {
         setStorageMode('supabase')
       } catch (deleteError) {
         setStorageMode('local')
-        setError(deleteError.message || localFallbackMessage)
+        setError(deleteError.message || 'Impossible de supprimer la photo.')
         throw deleteError
       } finally {
         setIsSaving(false)
