@@ -7,6 +7,7 @@ import PhotoActionSheet from './components/PhotoActionSheet'
 import PhotoCompareModal from './components/PhotoCompareModal'
 import PhotoViewerModal from './components/PhotoViewerModal'
 import WeightPlanModal from './components/WeightPlanModal'
+import useDailyReminder from './hooks/useDailyReminder'
 import useScrollDirection from './hooks/useScrollDirection'
 import useSync from './hooks/useSync'
 import useUserId from './hooks/useUserId'
@@ -97,6 +98,13 @@ function App() {
     setAddModalDate(date)
     setIsModalOpen(true)
   }, [])
+
+  useDailyReminder({
+    settings,
+    entries: sync.entries,
+    onAdd: openAddModal,
+    ready: sync.hasLoaded && !sync.isLoading,
+  })
 
   const closeAddModal = useCallback(() => {
     setIsModalOpen(false)

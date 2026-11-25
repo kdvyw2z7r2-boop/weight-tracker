@@ -245,6 +245,11 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
               label="Activer les rappels"
             />
           </div>
+          <p className="text-[13px] text-text-secondary">
+            {typeof Notification !== 'undefined' && Notification.permission === 'denied'
+              ? "Notifications bloquées dans le navigateur : le rappel s'affichera dans l'app."
+              : "Le rappel s'affiche à l'heure choisie si l'app est ouverte, ou dès que tu la rouvres. Installe l'app pour recevoir une notification."}
+          </p>
           {settings.reminderEnabled ? (
             <div className="animate-fade-up">
               <label className="mb-2 block text-sm text-text-secondary">Heure du rappel</label>
