@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-@theme {
+@theme static {
   --color-bg-primary: #080808;
   --color-bg-card: #0f0f0f;
   --color-bg-elevated: #181818;
@@ -15,6 +15,13 @@
   --color-accent-purple: #bf00ff;
   --color-accent-amber: #ffaa00;
   --color-accent-pink: #ff0080;
+  --color-weight: var(--color-accent-blue);
+  --color-plan: var(--color-accent-purple);
+  --color-avg: var(--color-accent-green);
+  --color-goal: var(--color-accent-amber);
+  --color-grid: rgba(255, 255, 255, 0.06);
+  --color-axis: #8a8a8a;
+  --color-track: #1e1e1e;
 }
 
 :root {

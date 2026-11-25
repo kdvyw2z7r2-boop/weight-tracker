@@ -224,7 +224,7 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
           <button
             type="button"
             onClick={onEditPlan}
-            className="press-button h-12 w-full rounded-xl bg-[#A78BFA]/15 text-[15px] font-medium text-[#A78BFA]"
+            className="press-button h-12 w-full rounded-xl bg-plan/15 text-[15px] font-medium text-plan"
           >
             {settings.weeklyPace != null ? 'Ajuster le plan de poids' : 'Configurer le plan de poids'}
           </button>

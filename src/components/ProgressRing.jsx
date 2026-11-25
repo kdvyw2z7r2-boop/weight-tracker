@@ -1,6 +1,7 @@
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
 import { formatDateShort } from '../utils/locale'
 import { formatWeight, formatWeightWithUnit } from '../utils/format'
+import { CHART_COLORS as C } from '../utils/chartColors'
 
 function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, unit, entriesCount = 0 }) {
   const size = 160
@@ -30,7 +31,7 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="block -rotate-90">
           <circle
-            stroke="#1E1E1E"
+            stroke={C.track}
             fill="transparent"
             strokeWidth={stroke}
             r={normalizedRadius}
@@ -39,19 +40,19 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
           />
           <defs>
             <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#00e5ff" />
-              <stop offset="100%" stopColor="#bf00ff" />
+              <stop offset="0%" stopColor="var(--color-accent-blue)" />
+              <stop offset="100%" stopColor="var(--color-accent-purple)" />
             </linearGradient>
           </defs>
           <circle
-            stroke={isPositiveProgress ? 'url(#ring-gradient)' : '#222222'}
+            stroke={isPositiveProgress ? 'url(#ring-gradient)' : C.track}
             fill="transparent"
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${circumference} ${circumference}`}
             style={{
               strokeDashoffset,
-              filter: isPositiveProgress ? 'drop-shadow(0 0 8px rgba(0,229,255,0.6))' : undefined,
+              filter: isPositiveProgress ? 'drop-shadow(0 0 8px color-mix(in srgb, var(--color-accent-blue) 60%, transparent))' : undefined,
             }}
             r={normalizedRadius}
             cx={radius}

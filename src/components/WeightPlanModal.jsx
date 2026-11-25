@@ -67,16 +67,16 @@ function WeightPlanModal({ isOpen, onClose, onSave, onRemove, startWeight, targe
           <h3 className="font-serif text-[22px] font-normal text-white">Définir votre rythme</h3>
           <p className="mt-4 text-[15px] text-text-secondary">Je m&apos;engage à perdre</p>
           <p className="mt-1 text-[32px] font-bold tabular-nums text-white">{formatPace(pace, unit)}</p>
-          <p className="mt-1 text-[13px] text-[#A78BFA]">Intervalle recommandé</p>
+          <p className="mt-1 text-[13px] text-plan">Intervalle recommandé</p>
 
           <div className="relative mt-8">
             <div className="relative h-2 rounded-full bg-bg-elevated">
               <div
-                className="absolute top-0 h-full rounded-full bg-[#A78BFA]/30"
+                className="absolute top-0 h-full rounded-full bg-plan/30"
                 style={{ left: `${recommendedLeft}%`, width: `${recommendedWidth}%` }}
               />
               <div
-                className="absolute top-0 h-full rounded-full bg-[#A78BFA]"
+                className="absolute top-0 h-full rounded-full bg-plan"
                 style={{ width: `${((pace - paceMin) / (paceMax - paceMin)) * 100}%` }}
               />
             </div>
@@ -128,7 +128,7 @@ function WeightPlanModal({ isOpen, onClose, onSave, onRemove, startWeight, targe
         <button
           type="button"
           onClick={handleSave}
-          className="h-[52px] w-full rounded-[14px] bg-[#A78BFA] text-base font-semibold text-white transition active:opacity-80"
+          className="h-[52px] w-full rounded-[14px] bg-plan text-base font-semibold text-white transition active:opacity-80"
         >
           Enregistrer
         </button>

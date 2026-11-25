@@ -86,14 +86,14 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
 
         {/* Inline stat row */}
         {latest ? (
-          <div className="mt-5 flex items-center border-t pt-4" style={{ borderColor: 'rgba(0,229,255,0.1)' }}>
-            <div className="stat-row-item" style={{ borderRight: '1px solid rgba(0,229,255,0.1)' }}>
+          <div className="mt-5 flex items-center border-t pt-4" style={{ borderColor: 'color-mix(in srgb, var(--color-accent-blue) 10%, transparent)' }}>
+            <div className="stat-row-item" style={{ borderRight: '1px solid color-mix(in srgb, var(--color-accent-blue) 10%, transparent)' }}>
               <span className={`stat-row-value ${bmi ? 'neon-text-cyan' : 'text-text-tertiary'}`}>
                 {bmi ? bmi.toFixed(1).replace('.', ',') : '—'}
               </span>
               <span className="stat-row-label">IMC</span>
             </div>
-            <div className="stat-row-item" style={{ borderRight: '1px solid rgba(0,229,255,0.1)' }}>
+            <div className="stat-row-item" style={{ borderRight: '1px solid color-mix(in srgb, var(--color-accent-blue) 10%, transparent)' }}>
               <span className={`stat-row-value ${monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'neon-text-green' : 'neon-text-red'}`}>
                 {monthVarLabel}
               </span>

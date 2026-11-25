@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { toChartLabel } from '../utils/weightPlan'
+import { CHART_COLORS as C } from '../utils/chartColors'
 
 function CustomTooltip({ active, payload, unit }) {
   if (!active || !payload?.length) return null
@@ -29,7 +30,7 @@ function CustomTooltip({ active, payload, unit }) {
         <p className="mt-0.5 text-[12px] text-accent-green">Moy. : {formatWeightWithUnit(point.avg, unit)}</p>
       ) : null}
       {point.projected ? (
-        <p className="mt-0.5 text-[12px] text-[#A78BFA]">Projection plan</p>
+        <p className="mt-0.5 text-[12px] text-plan">Projection plan</p>
       ) : null}
     </div>
   )
@@ -39,7 +40,7 @@ function CheckpointMarker({ cx, cy }) {
   if (cx == null || cy == null) return null
   return (
     <g transform={`translate(${cx}, ${cy})`}>
-      <circle r={8} fill="#141414" stroke="#A78BFA" strokeWidth={1.5} />
+      <circle r={8} fill={C.card} stroke={C.plan} strokeWidth={1.5} />
       <text y={3} textAnchor="middle" fontSize={9}>
         🏁
       </text>
@@ -102,14 +103,14 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
         <ComposedChart data={chartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(96,165,250,0.25)" />
-              <stop offset="100%" stopColor="rgba(96,165,250,0)" />
+              <stop offset="0%" stopColor={C.weight} stopOpacity={0.25} />
+              <stop offset="100%" stopColor={C.weight} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
           <XAxis
             dataKey="label"
-            stroke="#4B5563"
+            stroke={C.axis}
             tick={{ fontSize: 11 }}
             axisLine={false}
             tickLine={false}
@@ -117,7 +118,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
             interval="preserveStartEnd"
           />
           <YAxis
-            stroke="#4B5563"
+            stroke={C.axis}
             tick={{ fontSize: 11 }}
             domain={[yMin - 1, yMax + 1]}
             axisLine={false}
@@ -129,19 +130,19 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
           {Number.isFinite(targetWeight) ? (
             <ReferenceLine
               y={targetWeight}
-              stroke="#4B5563"
+              stroke={C.axis}
               strokeDasharray="4 4"
-              label={{ value: 'Objectif', position: 'insideTopRight', fill: '#4B5563', fontSize: 10 }}
+              label={{ value: 'Objectif', position: 'insideTopRight', fill: C.axis, fontSize: 10 }}
             />
           ) : null}
           <Area
             type="monotone"
             dataKey="weight"
-            stroke="#60A5FA"
+            stroke={C.weight}
             strokeWidth={2}
             fill="url(#weightGradient)"
-            dot={{ r: 3, fill: '#60A5FA', strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: '#60A5FA', stroke: '#fff', strokeWidth: 2 }}
+            dot={{ r: 3, fill: C.weight, strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: C.weight, stroke: C.text, strokeWidth: 2 }}
             animationDuration={800}
             animationEasing="ease-out"
             connectNulls={false}
@@ -150,7 +151,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
             <Line
               type="monotone"
               dataKey="projection"
-              stroke="#A78BFA"
+              stroke={C.plan}
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}
@@ -161,7 +162,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
           <Line
             type="monotone"
             dataKey="avg"
-            stroke="#4ADE80"
+            stroke={C.avg}
             strokeWidth={2}
             strokeDasharray="6 4"
             dot={false}

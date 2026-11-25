@@ -70,15 +70,15 @@ function BottomNav({ current, onChange }) {
   }, [current])
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-bg-nav/97 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl" style={{ borderColor: 'rgba(0,229,255,0.15)' }}>
+    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-bg-nav/97 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl" style={{ borderColor: 'color-mix(in srgb, var(--color-accent-blue) 15%, transparent)' }}>
       <div ref={containerRef} className="relative mx-auto grid h-16 w-full max-w-md grid-cols-4">
         <span
           className="nav-indicator absolute top-0 h-[2px] rounded-full transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
           style={{
             left: indicator.left,
             width: indicator.width,
-            background: 'linear-gradient(90deg, #00e5ff, #bf00ff)',
-            boxShadow: '0 0 8px rgba(0,229,255,0.8)',
+            background: 'linear-gradient(90deg, var(--color-accent-blue), var(--color-accent-purple))',
+            boxShadow: '0 0 8px color-mix(in srgb, var(--color-accent-blue) 80%, transparent)',
           }}
           aria-hidden="true"
         />
@@ -92,7 +92,7 @@ function BottomNav({ current, onChange }) {
               }}
               type="button"
               onClick={() => onChange(tab.id)}
-              style={active ? { color: '#00e5ff', filter: 'drop-shadow(0 0 4px rgba(0,229,255,0.5))' } : undefined}
+              style={active ? { color: 'var(--color-accent-blue)', filter: 'drop-shadow(0 0 4px color-mix(in srgb, var(--color-accent-blue) 50%, transparent))' } : undefined}
               className={`press-button flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
                 active ? '' : 'text-text-tertiary'
               }`}
