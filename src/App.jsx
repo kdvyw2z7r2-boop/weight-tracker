@@ -75,7 +75,7 @@ function App() {
   const [photoCompareEntry, setPhotoCompareEntry] = useState(null)
   const [addModalDate, setAddModalDate] = useState(null)
 
-  const { settings, updateSettings, resetSettings } = sync
+  const { settings, updateSettings } = sync
   const latest = sync.entries[0]
   const canConfigurePlan = Boolean(latest && settings.targetWeight && latest.weight > settings.targetWeight)
   const shouldAutoOpenPlan =
@@ -160,7 +160,6 @@ function App() {
             entriesApi={sync}
             settings={settings}
             updateSettings={updateSettings}
-            resetSettings={resetSettings}
             onEditPlan={openPlanModal}
           />
         )
@@ -176,7 +175,7 @@ function App() {
           />
         )
     }
-  }, [tab, sync, settings, updateSettings, resetSettings, openPlanModal, openAddModal, handlePhotoPress])
+  }, [tab, sync, settings, updateSettings, openPlanModal, openAddModal, handlePhotoPress])
 
   if (sync.isLoading || !sync.hasLoaded) {
     return <LoadingScreen error={sync.error} onRetry={sync.reload} />

@@ -616,10 +616,6 @@ function useSync(userId) {
     [entries, settings, persist],
   )
 
-  const resetSettings = useCallback(async () => {
-    await persist(entries, { ...defaultSettings })
-  }, [entries, persist])
-
   const clearAllData = useCallback(async () => {
     if (db && Object.keys(photosByDate).length) {
       await deleteAllPhotosFromSupabase(db, userId, photosByDate)
@@ -723,7 +719,6 @@ function useSync(userId) {
       deleteEntry,
       deleteEntries,
       updateSettings,
-      resetSettings,
       clearAllData,
       clearEntries,
       getMovingAverage,
@@ -753,7 +748,6 @@ function useSync(userId) {
       deleteEntry,
       deleteEntries,
       updateSettings,
-      resetSettings,
       clearAllData,
       clearEntries,
       getMovingAverage,

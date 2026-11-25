@@ -11,15 +11,31 @@ export function getChallengeEntries(entries, challengeStartDate) {
 }
 
 /**
+ * Pesée d'ancrage du défi (règle unique pour l'anneau et le plan) :
+ * 1re pesée à la date ou après, sinon la plus récente avant. Sans date : 1re pesée tout court.
+ */
+export function findChallengeAnchor(entries, date) {
+  let firstOnOrAfter = null
+  let latestBefore = null
+  for (const entry of entries ?? []) {
+    if (!date || entry.date >= date) {
+      if (!firstOnOrAfter || entry.date < firstOnOrAfter.date) firstOnOrAfter = entry
+    } else if (!latestBefore || entry.date > latestBefore.date) {
+      latestBefore = entry
+    }
+  }
+  return firstOnOrAfter ?? latestBefore
+}
+
+/**
  * Point de départ du défi : { startDate, startWeight } ou null.
- * Priorité : 1re pesée ≥ date du défi, sinon poids mémorisé au reset, sinon 1re pesée tout court.
+ * Poids = pesée d'ancrage (findChallengeAnchor), sinon poids mémorisé au reset.
  */
 export function resolveChallengeStart(settings, entries) {
   const startDate = settings?.challengeStartDate ?? null
-  const inChallenge = getChallengeEntries(entries ?? [], startDate)
-  const first = inChallenge.reduce((acc, entry) => (!acc || entry.date < acc.date ? entry : acc), null)
+  const anchor = findChallengeAnchor(entries, startDate)
 
-  if (first) return { startDate: startDate ?? first.date, startWeight: first.weight }
+  if (anchor) return { startDate: startDate ?? anchor.date, startWeight: anchor.weight }
   if (startDate && settings?.challengeStartWeight != null) {
     return { startDate, startWeight: settings.challengeStartWeight }
   }
@@ -28,18 +44,29 @@ export function resolveChallengeStart(settings, entries) {
 
 /**
  * Patch de settings pour redémarrer le défi à `date`.
- * Poids de départ = pesée du jour choisi, sinon la plus récente avant, sinon la plus récente.
- * Le plan de poids (s'il existe) est ré-ancré sur ce même point.
+ * Poids de départ = pesée d'ancrage (même règle que l'anneau). Le plan (s'il existe) part de `date` à ce poids.
  */
 export function buildChallengeResetPatch(entries, date = todayIso(), settings = {}) {
-  const sorted = [...(entries ?? [])].sort((a, b) => (a.date < b.date ? 1 : -1))
-  const anchor = sorted.find((entry) => entry.date <= date) ?? sorted[0] ?? null
-  const startWeight = anchor?.weight ?? null
+  const startWeight = findChallengeAnchor(entries, date)?.weight ?? null
 
   const patch = { challengeStartDate: date, challengeStartWeight: startWeight }
   if (settings.weeklyPace != null && startWeight != null) {
     patch.planStartDate = date
     patch.planStartWeight = startWeight
+  }
+  return patch
+}
+
+/**
+ * Patch de settings pour reprendre le défi depuis la toute première pesée.
+ * Le plan (s'il existe) est ré-ancré sur cette même première pesée.
+ */
+export function buildChallengeRestorePatch(entries, settings = {}) {
+  const patch = { challengeStartDate: null, challengeStartWeight: null }
+  const origin = resolveChallengeStart({}, entries)
+  if (settings.weeklyPace != null && origin) {
+    patch.planStartDate = origin.startDate
+    patch.planStartWeight = origin.startWeight
   }
   return patch
 }

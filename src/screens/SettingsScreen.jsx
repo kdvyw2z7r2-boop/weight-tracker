@@ -2,7 +2,12 @@ import { useState } from 'react'
 import ConfirmSheet from '../components/ConfirmSheet'
 import ExportButton from '../components/ExportButton'
 import NumberField from '../components/NumberField'
-import { buildChallengeResetPatch, resolveChallengeStart, todayIso } from '../utils/challenge'
+import {
+  buildChallengeResetPatch,
+  buildChallengeRestorePatch,
+  resolveChallengeStart,
+  todayIso,
+} from '../utils/challenge'
 import { useToast } from '../hooks/useToast'
 import { formatDateShort } from '../utils/locale'
 import { formatPace, formatWeight, formatWeightWithUnit } from '../utils/format'
@@ -49,12 +54,11 @@ function ChallengeCard({ entries, settings, updateSettings }) {
 
   const doRestoreOrigin = async () => {
     setConfirming(null)
-    const patch = { challengeStartDate: null, challengeStartWeight: null }
-    if (settings.weeklyPace != null) {
-      patch.planStartDate = null
-      patch.planStartWeight = null
+    try {
+      await updateSettings(buildChallengeRestorePatch(entries, settings))
+    } catch {
+      show('Impossible de reprendre le défi pour le moment.', { tone: 'error' })
     }
-    await updateSettings(patch)
   }
 
   return (
@@ -121,7 +125,7 @@ function ChallengeCard({ entries, settings, updateSettings }) {
   )
 }
 
-function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, onEditPlan }) {
+function SettingsScreen({ entriesApi, settings, updateSettings, onEditPlan }) {
   const { show } = useToast()
   const [isClearOpen, setIsClearOpen] = useState(false)
 
@@ -129,7 +133,6 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
     setIsClearOpen(false)
     try {
       await entriesApi.clearEntries()
-      resetSettings()
     } catch {
       show("Impossible d'effacer les données pour le moment.", { tone: 'error' })
     }
@@ -281,8 +284,7 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
                 const file = event.target.files?.[0]
                 if (!file) return
                 try {
-                  const data = await entriesApi.importJSON(file)
-                  if (data.settings) updateSettings(data.settings)
+                  await entriesApi.importJSON(file)
                   show('Import terminé avec succès.', { tone: 'success' })
                 } catch {
                   show("Fichier d'import invalide.", { tone: 'error' })
