@@ -94,7 +94,7 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
       weeklyPace: settings.weeklyPace,
       startDate: anchor.startDate,
     })
-  }, [settings.weeklyPace, settings.targetWeight, settings.planStartDate, settings.planStartWeight, anchor?.startWeight, anchor?.startDate])
+  }, [settings.weeklyPace, settings.targetWeight, anchor])
 
   const nextCheckpoint = getNextCheckpoint(plan)
   const { currentRate } = computeActualRates(entries, anchor?.startDate)

@@ -1,21 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { PHOTO_ASPECT, cropImageToBlob } from '../utils/photo'
 
 function PhotoCropModal({ isOpen, imageUrl, onClose, onConfirm }) {
+  if (!isOpen || !imageUrl) return null
+  // key : l'état du recadrage repart de zéro à chaque ouverture / nouvelle image
+  return <PhotoCropEditor key={imageUrl} imageUrl={imageUrl} onClose={onClose} onConfirm={onConfirm} />
+}
+
+function PhotoCropEditor({ imageUrl, onClose, onConfirm }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    if (!isOpen) return
-    setCrop({ x: 0, y: 0 })
-    setZoom(1)
-    setCroppedAreaPixels(null)
-    setError('')
-  }, [isOpen, imageUrl])
 
   const handleCropComplete = useCallback((_croppedArea, croppedPixels) => {
     setCroppedAreaPixels(croppedPixels)
@@ -36,8 +34,6 @@ function PhotoCropModal({ isOpen, imageUrl, onClose, onConfirm }) {
       setIsProcessing(false)
     }
   }
-
-  if (!isOpen || !imageUrl) return null
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-black text-white">

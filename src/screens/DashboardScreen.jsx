@@ -7,7 +7,6 @@ import { getChallengeEntries, resolveChallengeStart } from '../utils/challenge'
 import { formatDateLong, formatDateShort } from '../utils/locale'
 import {
   getBmi,
-  getBmiCategory,
   getCurrentStreak,
   getMonthVariation,
 } from '../utils/stats'
@@ -26,7 +25,6 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
   const monthVariation = getMonthVariation(entries)
   const streak = getCurrentStreak(entries)
   const bmi = latest ? getBmi(latest.weight, settings.height, settings.unit) : null
-  const bmiCategory = getBmiCategory(bmi)
   const animatedWeight = useAnimatedNumber(latest?.weight ?? 0, 800)
 
   const weightPlan = useMemo(() => {
@@ -39,7 +37,7 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
       weeklyPace: settings.weeklyPace,
       startDate: anchor.startDate,
     })
-  }, [settings.weeklyPace, settings.targetWeight, settings.planStartDate, settings.planStartWeight, entries])
+  }, [settings, entries])
 
   const entriesAsc = useMemo(() => [...challengeEntries].reverse(), [challengeEntries])
 
@@ -50,16 +48,10 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
         ? '—'
         : `${delta > 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1).replace('.', ',')} ${settings.unit}`
 
-  const deltaColor =
-    delta === null ? 'text-text-tertiary' : delta <= 0 ? 'text-accent-green' : 'text-accent-red'
-
   const monthVarLabel =
     monthVariation === null
       ? '—'
       : `${monthVariation > 0 ? '+' : ''}${monthVariation.toFixed(1).replace('.', ',')} ${settings.unit}`
-
-  const monthVarColor =
-    monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'text-accent-green' : 'text-accent-red'
 
   const displayWeight = latest
     ? settings.unit === 'kg'
