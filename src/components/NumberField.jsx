@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { parseBoundedNumber } from '../utils/number'
+import { resolveCommit } from '../utils/number'
 
 const inputClass =
   'h-12 w-full rounded-xl border border-transparent bg-bg-card px-4 text-base text-white outline-none transition duration-200 focus:border-white/20'
@@ -18,13 +18,13 @@ function NumberField({ label, value, min, max, format, onCommit }) {
   }
 
   const commit = () => {
-    const parsed = parseBoundedNumber(draft, { min, max })
-    if (parsed === null) {
+    const next = resolveCommit(draft, { display, value, min, max })
+    if (next === null) {
       setDraft(display)
       return
     }
-    if (parsed !== Number(value)) onCommit(parsed)
-    setDraft(format(parsed))
+    onCommit(next)
+    setDraft(format(next))
   }
 
   return (
