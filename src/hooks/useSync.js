@@ -34,9 +34,6 @@ const sortByDateDesc = (items) =>
 const localFallbackMessage =
   'Mode local : impossible de joindre le cloud pour le moment. Vos données restent sur cet appareil.'
 
-const missingSupabaseEnvMessage =
-  'Supabase non configuré au build. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sur Vercel, puis redéployez.'
-
 const photoUnavailableMessage =
   'Les photos nécessitent Supabase. Configurez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.'
 
@@ -364,6 +361,7 @@ function useSync(userId) {
   const [isSaving, setIsSaving] = useState(false)
   const [storageMode, setStorageMode] = useState(isSupabaseConfigured ? 'supabase' : 'cloud')
   const [error, setError] = useState('')
+  const [syncStatus, setSyncStatus] = useState(isSupabaseConfigured ? 'cloud' : 'local-unconfigured')
 
   const db = useMemo(() => createSupabaseClient(userId), [userId])
 
@@ -411,6 +409,7 @@ function useSync(userId) {
         setSettings(mergedSettings)
         setPhotosByDate(mergedPhotos)
         setStorageMode('supabase')
+        setSyncStatus('cloud')
         setHasLoaded(true)
         return
       }
@@ -440,6 +439,7 @@ function useSync(userId) {
       setSettings(mergedSettings)
       setPhotosByDate(localPhotos)
       setStorageMode('cloud')
+      setSyncStatus('cloud')
       setHasLoaded(true)
     } catch (loadError) {
       storeLocalEntries(userId, localEntries)
@@ -449,7 +449,7 @@ function useSync(userId) {
       setSettings(localSettings)
       setPhotosByDate(localPhotos)
       setStorageMode('local')
-      setError(db ? localFallbackMessage : missingSupabaseEnvMessage)
+      setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
       setHasLoaded(true)
       console.error('Cloud sync failed:', loadError)
     } finally {
@@ -469,7 +469,7 @@ function useSync(userId) {
     async (nextEntries, nextSettings, nextPhotos = photosByDate) => {
       if (!userId) {
         setStorageMode('local')
-        setError(localFallbackMessage)
+        setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
         return
       }
 
@@ -496,9 +496,10 @@ function useSync(userId) {
           clearLegacyStorage()
           setStorageMode('cloud')
         }
+        setSyncStatus('cloud')
       } catch {
         setStorageMode('local')
-        setError(localFallbackMessage)
+        setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
       } finally {
         setIsSaving(false)
       }
@@ -717,6 +718,7 @@ function useSync(userId) {
       hasLoaded,
       isSaving,
       storageMode,
+      syncStatus,
       error,
       isSupabaseConfigured,
       reload: loadData,
@@ -747,6 +749,7 @@ function useSync(userId) {
       hasLoaded,
       isSaving,
       storageMode,
+      syncStatus,
       error,
       loadData,
       addEntry,

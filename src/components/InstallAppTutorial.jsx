@@ -50,7 +50,7 @@ function TutorialSteps({ title, steps, note }) {
   )
 }
 
-function InstallAppTutorial() {
+function InstallAppTutorial({ leading = null }) {
   const [isOpen, setIsOpen] = useState(false)
   const deviceType = useMemo(() => getDeviceType(), [])
   const showIOS = deviceType === 'ios' || deviceType === 'other'
@@ -70,11 +70,12 @@ function InstallAppTutorial() {
 
   return (
     <>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        {leading}
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="press-button flex h-9 items-center gap-2 rounded-full border border-border bg-bg-card/80 px-3 text-[12px] font-medium text-text-secondary shadow-sm backdrop-blur transition hover:text-text-primary"
+          className="press-button ml-auto flex h-9 shrink-0 items-center gap-2 rounded-full border border-border bg-bg-card/80 px-3 text-[12px] font-medium text-text-secondary shadow-sm backdrop-blur transition hover:text-text-primary"
         >
           <PhoneIcon />
           Installer l&apos;app

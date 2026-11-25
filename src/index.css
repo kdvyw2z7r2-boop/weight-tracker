@@ -18,6 +18,7 @@
 }
 
 :root {
+  --nav-h: calc(4rem + 1px + env(safe-area-inset-bottom, 0px));
   font-family: Inter, system-ui, sans-serif;
   color: #fff;
   background: #080808;
@@ -367,7 +368,7 @@ body {
 
   .fab {
     position: fixed;
-    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--nav-h) + 16px);
     right: 1.25rem;
     z-index: 15;
     width: 56px;
@@ -389,6 +390,12 @@ body {
       transform 200ms var(--ease-spring),
       opacity 150ms ease,
       box-shadow 200ms ease;
+  }
+
+  .fab[data-hidden='true'] {
+    transform: translateY(calc(100% + var(--nav-h) + 32px));
+    opacity: 0;
+    pointer-events: none;
   }
 
   .fab:active {

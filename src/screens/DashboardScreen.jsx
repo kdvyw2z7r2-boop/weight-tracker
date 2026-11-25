@@ -60,8 +60,8 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
     <section className="space-y-4">
       <header className="animate-fade-up flex items-start justify-between">
         <div>
-          <h1 className="text-[20px] font-black leading-tight tracking-tight uppercase neon-text-cyan">
-            Weight
+          <h1 className="text-[20px] font-black leading-tight tracking-tight neon-text-cyan">
+            Mon poids
           </h1>
           <p className="mt-0.5 text-[12px] capitalize text-text-tertiary font-medium tracking-wide">{formatDateLong()}</p>
         </div>
