@@ -31,9 +31,10 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
+      {/* Marge droite = colonne du FAB (right 1.25rem + 56px + 12px d'écart) : le toast ne le recouvre jamais. */}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--nav-h)+12px)] z-50 flex justify-center px-4"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--nav-h)+12px)] z-50 flex justify-center pl-4 pr-[calc(1.25rem+56px+12px)]"
       >
         {toast ? (
           <div
