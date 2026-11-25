@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CompareSlot } from './ProgressCompare'
+import { formatWeightWithUnit } from '../utils/format'
 
 function PhotoCompareModal({ isOpen, onClose, pair, unit = 'kg' }) {
   const [render, setRender] = useState(false)
@@ -58,7 +59,7 @@ function PhotoCompareModal({ isOpen, onClose, pair, unit = 'kg' }) {
                 }`}
               >
                 {weightDelta > 0 ? '+' : ''}
-                {weightDelta.toFixed(1).replace('.', ',')} {unit}
+                {formatWeightWithUnit(weightDelta, unit)}
               </p>
             ) : null}
           </div>

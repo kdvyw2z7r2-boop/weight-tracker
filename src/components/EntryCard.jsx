@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatDateEntry } from '../utils/locale'
+import { formatWeight, formatWeightWithUnit } from '../utils/format'
 
 function CameraIcon({ active = false }) {
   return (
@@ -71,14 +72,14 @@ function EntryCard({
         <div>
           <p className="text-[12px] font-medium tracking-wide uppercase text-text-tertiary">{formatDateEntry(entry.date)}</p>
           <p className="mt-1 text-[24px] font-black leading-tight tabular-nums text-white" style={{ letterSpacing: '-1px' }}>
-            {entry.weight.toString().replace('.', ',')} <span className="text-[14px] font-bold text-text-tertiary">{unit}</span>
+            {formatWeight(entry.weight)} <span className="text-[14px] font-bold text-text-tertiary">{unit}</span>
           </p>
         </div>
         <div className="text-right">
           <span className={deltaBadgeClass}>
             {delta === null
               ? '—'
-              : `${delta > 0 ? '+' : ''}${delta.toFixed(1).replace('.', ',')} ${unit}`}
+              : `${delta > 0 ? '+' : ''}${formatWeightWithUnit(delta, unit)}`}
           </span>
         </div>
       </div>

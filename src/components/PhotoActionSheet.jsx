@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import PhotoCropModal from './PhotoCropModal'
 import usePhotoCrop from '../hooks/usePhotoCrop'
 import { formatDateEntry } from '../utils/locale'
+import { formatWeightWithUnit } from '../utils/format'
 import { PHOTO_LIBRARY_ACCEPT } from '../utils/photo'
 
 function PhotoActionSheet({
@@ -98,7 +99,7 @@ function PhotoActionSheet({
               <p className="text-[13px] text-text-tertiary">{formatDateEntry(date)}</p>
               {weight != null ? (
                 <p className="mt-1 text-lg font-semibold tabular-nums text-white">
-                  {weight.toString().replace('.', ',')} {unit}
+                  {formatWeightWithUnit(weight, unit)}
                 </p>
               ) : null}
             </div>

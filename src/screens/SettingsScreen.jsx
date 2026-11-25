@@ -2,7 +2,7 @@ import { useState } from 'react'
 import ExportButton from '../components/ExportButton'
 import { buildChallengeResetPatch, resolveChallengeStart, todayIso } from '../utils/challenge'
 import { formatDateShort } from '../utils/locale'
-import { formatPace, formatWeight } from '../utils/weightPlan'
+import { formatPace, formatWeightWithUnit } from '../utils/format'
 
 function IOSSwitch({ checked, onChange, label }) {
   return (
@@ -63,7 +63,7 @@ function ChallengeCard({ entries, settings, updateSettings }) {
           <p className="text-sm font-medium text-text-primary">Point de départ</p>
           <p className="mt-0.5 text-[13px] text-text-tertiary">
             {start
-              ? `${formatDateShort(start.startDate)} · ${formatWeight(start.startWeight, settings.unit)} ${settings.unit}`
+              ? `${formatDateShort(start.startDate)} · ${formatWeightWithUnit(start.startWeight, settings.unit)}`
               : 'Aucune pesée pour le moment'}
           </p>
         </div>
@@ -187,7 +187,7 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
             <p className="text-sm font-medium text-text-primary">Rythme et points de contrôle</p>
             <p className="mt-0.5 text-[13px] text-text-tertiary">
               {settings.weeklyPace != null
-                ? `Rythme actuel : ${formatPace(settings.weeklyPace)}`
+                ? `Rythme actuel : ${formatPace(settings.weeklyPace, settings.unit)}`
                 : 'Aucun rythme défini'}
             </p>
           </div>

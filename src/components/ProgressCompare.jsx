@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { formatDateEntry } from '../utils/locale'
+import { formatWeightWithUnit } from '../utils/format'
 import { buildComparePairs } from '../utils/progressPhotos'
 
 export function CompareSlot({ label, date, url, weight, unit }) {
@@ -18,7 +19,7 @@ export function CompareSlot({ label, date, url, weight, unit }) {
       <p className="mt-2 text-center text-[12px] text-text-tertiary">{date ? formatDateEntry(date) : '—'}</p>
       {weight != null ? (
         <p className="text-center text-[13px] font-medium tabular-nums text-white">
-          {weight.toString().replace('.', ',')} {unit}
+          {formatWeightWithUnit(weight, unit)}
         </p>
       ) : null}
     </div>

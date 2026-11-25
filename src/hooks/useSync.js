@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { createSupabaseClient, isSupabaseConfigured, PHOTO_BUCKET } from '../lib/supabase'
 import { createSignedPhotoUrl, photoStoragePath } from '../utils/photo'
+import { convertSettingsUnit, convertWeightValue } from '../utils/units'
 
 const API_ENDPOINT = '/api/sync'
 const LEGACY_ENTRIES_KEY = 'wt_entries'
@@ -25,8 +26,6 @@ export const defaultSettings = {
   challengeStartWeight: null,
 }
 
-const kgToLbs = (kg) => kg * 2.20462
-const lbsToKg = (lbs) => lbs / 2.20462
 const round = (value) => Math.round(value * 100) / 100
 
 const sortByDateDesc = (items) =>
@@ -699,18 +698,8 @@ function useSync(userId) {
   const convertAllUnits = useCallback(
     async (nextUnit) => {
       if (nextUnit === settings.unit) return
-      const convert = (value) =>
-        value == null || !Number.isFinite(Number(value))
-          ? value
-          : round(nextUnit === 'lbs' ? kgToLbs(Number(value)) : lbsToKg(Number(value)))
-      const next = entries.map((entry) => ({ ...entry, weight: convert(entry.weight) }))
-      await persist(next, {
-        ...settings,
-        unit: nextUnit,
-        targetWeight: convert(settings.targetWeight),
-        planStartWeight: convert(settings.planStartWeight),
-        challengeStartWeight: convert(settings.challengeStartWeight),
-      })
+      const next = entries.map((entry) => ({ ...entry, weight: convertWeightValue(entry.weight, nextUnit) }))
+      await persist(next, convertSettingsUnit(settings, nextUnit))
     },
     [entries, settings, persist],
   )

@@ -19,11 +19,10 @@ import {
 import {
   computeActualRates,
   computeWeightPlan,
-  formatPace,
-  formatWeight,
   getNextCheckpoint,
   resolvePlanAnchor,
 } from '../utils/weightPlan'
+import { formatPace, formatWeightWithUnit } from '../utils/format'
 
 const PERIODS = [
   { key: '1m', label: '1 mois', days: 30 },
@@ -172,11 +171,11 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
       <div className="card-base animate-fade-up animate-stagger-4">
         <div className="flex items-center">
           <div className="stat-row-item border-r border-border">
-            <span className="stat-row-value text-text-primary">{weights.length ? minWeight.toFixed(1).replace('.', ',') : '—'}</span>
+            <span className="stat-row-value text-text-primary">{weights.length ? formatWeightWithUnit(minWeight, settings.unit) : '—'}</span>
             <span className="stat-row-label">Minimum</span>
           </div>
           <div className="stat-row-item border-r border-border">
-            <span className="stat-row-value text-text-primary">{weights.length ? avgWeight.toFixed(1).replace('.', ',') : '—'}</span>
+            <span className="stat-row-value text-text-primary">{weights.length ? formatWeightWithUnit(avgWeight, settings.unit) : '—'}</span>
             <span className="stat-row-label">Moyenne</span>
           </div>
           <div className="stat-row-item">
@@ -206,11 +205,11 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
                 <p className="text-[14px] font-medium text-white">Rythme cible</p>
                 <p className="text-[12px] text-text-tertiary mt-0.5">
                   {currentRate != null && currentRate > 0
-                    ? `Actuel : ${formatPace(currentRate)}`
+                    ? `Actuel : ${formatPace(currentRate, settings.unit)}`
                     : 'Pas encore de données'}
                 </p>
               </div>
-              <p className="text-[16px] font-black neon-text-purple">{formatPace(plan.weeklyPace)}</p>
+              <p className="text-[16px] font-black neon-text-purple">{formatPace(plan.weeklyPace, settings.unit)}</p>
             </div>
 
             {nextCheckpoint ? (
@@ -220,7 +219,7 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
                   <p className="text-[12px] text-text-tertiary mt-0.5">{formatDatePlanShort(nextCheckpoint.date)}</p>
                 </div>
                 <p className="text-[16px] font-black tabular-nums text-white">
-                  {formatWeight(nextCheckpoint.weight, settings.unit)} {settings.unit}
+                  {formatWeightWithUnit(nextCheckpoint.weight, settings.unit)}
                 </p>
               </div>
             ) : null}
@@ -231,7 +230,7 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
                 <p className="text-[12px] neon-text-amber mt-0.5">{formatDatePlanShort(plan.endDate)}</p>
               </div>
               <p className="text-[16px] font-bold tabular-nums neon-text-amber">
-                {formatWeight(plan.targetWeight, settings.unit)} {settings.unit}
+                {formatWeightWithUnit(plan.targetWeight, settings.unit)}
               </p>
             </div>
           </div>

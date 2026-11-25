@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { formatWeightWithUnit } from '../utils/format'
 import {
   Area,
   CartesianGrid,
@@ -22,10 +23,10 @@ function CustomTooltip({ active, payload, unit }) {
     <div className="rounded-xl border border-border bg-bg-card px-3 py-2 shadow-lg">
       <p className="text-[12px] text-text-tertiary">{point.date}</p>
       <p className="mt-0.5 text-sm font-semibold text-text-primary">
-        {point.weight} {unit}
+        {formatWeightWithUnit(point.weight, unit)}
       </p>
       {point.avg ? (
-        <p className="mt-0.5 text-[12px] text-accent-green">Moy. : {point.avg} {unit}</p>
+        <p className="mt-0.5 text-[12px] text-accent-green">Moy. : {formatWeightWithUnit(point.avg, unit)}</p>
       ) : null}
       {point.projected ? (
         <p className="mt-0.5 text-[12px] text-[#A78BFA]">Projection plan</p>

@@ -1,5 +1,6 @@
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
 import { formatDateShort } from '../utils/locale'
+import { formatWeight, formatWeightWithUnit } from '../utils/format'
 
 function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, unit, entriesCount = 0 }) {
   const size = 160
@@ -21,7 +22,7 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
       <div className="min-w-0 flex-1 text-[13px] leading-snug text-text-tertiary">
         <p className="section-label !normal-case !tracking-normal !text-[11px]">Départ</p>
         <p className="mt-1.5 text-[15px] font-medium text-text-primary">
-          {startWeight} {unit}
+          {formatWeightWithUnit(startWeight, unit)}
         </p>
         {startDate ? <p className="mt-0.5 text-[12px]">{formatDateShort(startDate)}</p> : null}
       </div>
@@ -66,7 +67,7 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
             {displayPercent}%
           </p>
           <p className="mt-1 max-w-[90px] text-[12px] leading-tight text-text-tertiary">
-            {hasEnoughEntries ? `${currentWeight} / ${targetWeight}` : 'Début du suivi'}
+            {hasEnoughEntries ? `${formatWeight(currentWeight)} / ${formatWeight(targetWeight)}` : 'Début du suivi'}
           </p>
         </div>
       </div>
@@ -74,7 +75,7 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
       <div className="min-w-0 flex-1 text-right text-[13px] leading-snug text-text-tertiary">
         <p className="section-label !normal-case !tracking-normal !text-[11px]">Objectif</p>
         <p className="mt-1.5 text-[15px] font-medium text-text-primary">
-          {targetWeight} {unit}
+          {formatWeightWithUnit(targetWeight, unit)}
         </p>
       </div>
     </div>

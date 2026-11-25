@@ -10,7 +10,8 @@ import {
   getCurrentStreak,
   getMonthVariation,
 } from '../utils/stats'
-import { computeWeightPlan, formatPace, resolvePlanAnchor } from '../utils/weightPlan'
+import { computeWeightPlan, resolvePlanAnchor } from '../utils/weightPlan'
+import { formatPace, formatWeight, formatWeightWithUnit } from '../utils/format'
 
 function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEditPlan }) {
   const latest = entries[0]
@@ -46,18 +47,14 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
       ? 'Ajoutez votre première pesée'
       : delta === null
         ? '—'
-        : `${delta > 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1).replace('.', ',')} ${settings.unit}`
+        : `${delta > 0 ? '▲' : '▼'} ${formatWeightWithUnit(Math.abs(delta), settings.unit)}`
 
   const monthVarLabel =
     monthVariation === null
       ? '—'
-      : `${monthVariation > 0 ? '+' : ''}${monthVariation.toFixed(1).replace('.', ',')} ${settings.unit}`
+      : `${monthVariation > 0 ? '+' : ''}${formatWeightWithUnit(monthVariation, settings.unit)}`
 
-  const displayWeight = latest
-    ? settings.unit === 'kg'
-      ? animatedWeight.toFixed(1).replace('.', ',')
-      : animatedWeight.toFixed(1)
-    : '—'
+  const displayWeight = latest ? formatWeight(animatedWeight) : '—'
 
   return (
     <section className="space-y-4">
@@ -145,7 +142,7 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
               </div>
               {weightPlan ? (
                 <p className="text-[12px] neon-text-purple">
-                  {formatPace(weightPlan.weeklyPace)}
+                  {formatPace(weightPlan.weeklyPace, settings.unit)}
                 </p>
               ) : (
                         <button
