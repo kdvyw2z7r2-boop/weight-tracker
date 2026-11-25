@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import ExportButton from '../components/ExportButton'
+import NumberField from '../components/NumberField'
 import { buildChallengeResetPatch, resolveChallengeStart, todayIso } from '../utils/challenge'
 import { formatDateShort } from '../utils/locale'
-import { formatPace, formatWeightWithUnit } from '../utils/format'
+import { formatPace, formatWeight, formatWeightWithUnit } from '../utils/format'
 
 function IOSSwitch({ checked, onChange, label }) {
   return (
@@ -137,24 +138,22 @@ function SettingsScreen({ entriesApi, settings, updateSettings, resetSettings, o
       <div className="animate-fade-up animate-stagger-1">
         <p className="section-label mb-3">Profil</p>
         <div className="card-base space-y-4">
-          <div>
-            <label className="mb-2 block text-sm text-text-secondary">Taille (cm)</label>
-            <input
-              type="number"
-              value={settings.height}
-              onChange={(event) => updateSettings({ height: Number(event.target.value) || 0 })}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm text-text-secondary">Poids cible</label>
-            <input
-              type="number"
-              value={settings.targetWeight}
-              onChange={(event) => updateSettings({ targetWeight: Number(event.target.value) || 0 })}
-              className={inputClass}
-            />
-          </div>
+          <NumberField
+            label="Taille (cm)"
+            value={settings.height}
+            min={120}
+            max={230}
+            format={(v) => String(Math.round(Number(v)))}
+            onCommit={(height) => updateSettings({ height })}
+          />
+          <NumberField
+            label={`Poids cible (${settings.unit})`}
+            value={settings.targetWeight}
+            min={settings.unit === 'lbs' ? 66 : 30}
+            max={settings.unit === 'lbs' ? 550 : 250}
+            format={formatWeight}
+            onCommit={(targetWeight) => updateSettings({ targetWeight })}
+          />
           <div className="flex gap-2">
             <button
               type="button"
