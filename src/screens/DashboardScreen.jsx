@@ -3,7 +3,8 @@ import ProgressCompare from '../components/ProgressCompare'
 import ProgressRing from '../components/ProgressRing'
 import WeightChart from '../components/WeightChart'
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
-import { formatDateLong } from '../utils/locale'
+import { getChallengeEntries, resolveChallengeStart } from '../utils/challenge'
+import { formatDateLong, formatDateShort } from '../utils/locale'
 import {
   getBmi,
   getBmiCategory,
@@ -16,12 +17,12 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
   const latest = entries[0]
   const previous = entries[1]
   const delta = latest && previous ? latest.weight - previous.weight : null
-  const sortedAsc = useMemo(
-    () => [...entries].sort((a, b) => (a.date > b.date ? 1 : -1)),
-    [entries],
+  const challengeEntries = useMemo(
+    () => getChallengeEntries(entries, settings.challengeStartDate),
+    [entries, settings.challengeStartDate],
   )
-  const firstEntry = sortedAsc[0]
-  const startWeight = firstEntry?.weight ?? latest?.weight ?? settings.targetWeight
+  const challengeStart = resolveChallengeStart(settings, entries)
+  const startWeight = challengeStart?.startWeight ?? latest?.weight ?? settings.targetWeight
   const monthVariation = getMonthVariation(entries)
   const streak = getCurrentStreak(entries)
   const bmi = latest ? getBmi(latest.weight, settings.height, settings.unit) : null
@@ -40,7 +41,7 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
     })
   }, [settings.weeklyPace, settings.targetWeight, settings.planStartDate, settings.planStartWeight, entries])
 
-  const entriesAsc = useMemo(() => [...entries].reverse(), [entries])
+  const entriesAsc = useMemo(() => [...challengeEntries].reverse(), [challengeEntries])
 
   const deltaLabel =
     entries.length === 0
@@ -133,16 +134,23 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
         <>
           <ProgressRing
             startWeight={startWeight}
-            startDate={firstEntry?.date}
+            startDate={challengeStart?.startDate}
             currentWeight={latest.weight}
             targetWeight={settings.targetWeight}
             unit={settings.unit}
-            entriesCount={entries.length}
+            entriesCount={settings.challengeStartDate ? challengeEntries.length + 1 : entries.length}
           />
 
           <div className="card-base animate-fade-up animate-stagger-3">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-medium text-text-primary">Évolution du poids</p>
+              <div>
+                <p className="text-sm font-medium text-text-primary">Évolution du poids</p>
+                {settings.challengeStartDate ? (
+                  <p className="mt-0.5 text-[11px] text-text-tertiary">
+                    Depuis le {formatDateShort(settings.challengeStartDate)}
+                  </p>
+                ) : null}
+              </div>
               {weightPlan ? (
                 <p className="text-[12px] neon-text-purple">
                   {formatPace(weightPlan.weeklyPace)}

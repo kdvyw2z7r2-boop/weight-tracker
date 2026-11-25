@@ -72,9 +72,9 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
 
     const merged = [...historical]
     futurePoints.forEach((point) => {
-      if (!merged.some((item) => item.date === point.date)) {
-        merged.push(point)
-      }
+      const existing = merged.find((item) => item.date === point.date)
+      if (existing) existing.projection = point.projection
+      else merged.push(point)
     })
 
     return merged.sort((a, b) => (a.date > b.date ? 1 : -1))

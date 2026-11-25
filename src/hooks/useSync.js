@@ -21,6 +21,8 @@ export const defaultSettings = {
   planSetupComplete: false,
   planStartDate: null,
   planStartWeight: null,
+  challengeStartDate: null,
+  challengeStartWeight: null,
 }
 
 const kgToLbs = (kg) => kg * 2.20462
@@ -697,11 +699,18 @@ function useSync(userId) {
   const convertAllUnits = useCallback(
     async (nextUnit) => {
       if (nextUnit === settings.unit) return
-      const next = entries.map((entry) => ({
-        ...entry,
-        weight: round(nextUnit === 'lbs' ? kgToLbs(entry.weight) : lbsToKg(entry.weight)),
-      }))
-      await persist(next, { ...settings, unit: nextUnit })
+      const convert = (value) =>
+        value == null || !Number.isFinite(Number(value))
+          ? value
+          : round(nextUnit === 'lbs' ? kgToLbs(Number(value)) : lbsToKg(Number(value)))
+      const next = entries.map((entry) => ({ ...entry, weight: convert(entry.weight) }))
+      await persist(next, {
+        ...settings,
+        unit: nextUnit,
+        targetWeight: convert(settings.targetWeight),
+        planStartWeight: convert(settings.planStartWeight),
+        challengeStartWeight: convert(settings.challengeStartWeight),
+      })
     },
     [entries, settings, persist],
   )
