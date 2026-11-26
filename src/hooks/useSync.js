@@ -12,6 +12,7 @@ import {
   sortByDateDesc,
   updateTombstones,
 } from '../utils/syncMerge'
+import { createSaveQueue } from '../utils/saveQueue'
 
 const API_ENDPOINT = '/api/sync'
 const LEGACY_ENTRIES_KEY = 'wt_entries'
@@ -345,6 +346,8 @@ function useSync(userId) {
   const [syncStatus, setSyncStatus] = useState(isSupabaseConfigured ? 'cloud' : 'local-unconfigured')
 
   const db = useMemo(() => createSupabaseClient(userId), [userId])
+  // Une sauvegarde cloud à la fois ; les demandes rapprochées sont fusionnées (la plus récente gagne).
+  const [saveQueue] = useState(createSaveQueue)
 
   const loadData = useCallback(async () => {
     if (!userId) return
@@ -467,11 +470,11 @@ function useSync(userId) {
 
       try {
         if (db) {
-          await saveSupabaseData(db, userId, sortedEntries, normalizedSettings)
+          await saveQueue.enqueue(() => saveSupabaseData(db, userId, sortedEntries, normalizedSettings))
           clearLegacyStorage()
           setStorageMode('supabase')
         } else {
-          await saveCloudData(userId, sortedEntries, normalizedSettings)
+          await saveQueue.enqueue(() => saveCloudData(userId, sortedEntries, normalizedSettings))
           clearLegacyStorage()
           setStorageMode('cloud')
         }
@@ -483,7 +486,7 @@ function useSync(userId) {
         setIsSaving(false)
       }
     },
-    [userId, db, photosByDate, entries],
+    [userId, db, photosByDate, entries, saveQueue],
   )
 
   const uploadDailyPhoto = useCallback(
