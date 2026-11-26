@@ -27,8 +27,8 @@ async function showSystemNotification() {
     if (!registration) return false
     await registration.showNotification('Pesée du jour', {
       body: "Pense à enregistrer ton poids aujourd'hui.",
-      icon: '/favicon.svg',
-      badge: '/favicon.svg',
+      icon: `${import.meta.env.BASE_URL}icons/icon-192.png`,
+      badge: `${import.meta.env.BASE_URL}icons/badge-96.png`,
       tag: 'daily-reminder',
     })
     return true
