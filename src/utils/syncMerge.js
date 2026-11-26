@@ -74,9 +74,10 @@ export function pruneTombstones(tombstones, now, maxAgeMs = TOMBSTONE_MAX_AGE_MS
 
 /**
  * Marqueurs de synchro après un changement local : deletedAt = now pour les ids retirés,
- * restoredAt = now pour les ids (ré)ajoutés qui étaient supprimés.
+ * restoredAt = now pour les ids (ré)ajoutés qui étaient supprimés — ou pour tout id ajouté avec
+ * { restoreAdded: true } (import : le tombstone peut n'exister que dans le cloud).
  */
-export function updateSyncMarkers(markers, prevEntries, nextEntries, now) {
+export function updateSyncMarkers(markers, prevEntries, nextEntries, now, { restoreAdded = false } = {}) {
   const deletedEntries = normalizeTombstones(markers?.deletedEntries)
   const restoredEntries = normalizeTombstones(markers?.restoredEntries)
   const prevIds = new Set(prevEntries.map((entry) => entry.id))
@@ -85,7 +86,8 @@ export function updateSyncMarkers(markers, prevEntries, nextEntries, now) {
     if (!nextIds.has(id)) deletedEntries[id] = now
   }
   for (const id of nextIds) {
-    if (!prevIds.has(id) && isDeletedEntry(id, deletedEntries, restoredEntries)) restoredEntries[id] = now
+    if (prevIds.has(id)) continue
+    if (restoreAdded || isDeletedEntry(id, deletedEntries, restoredEntries)) restoredEntries[id] = now
   }
   return { deletedEntries, restoredEntries }
 }
@@ -133,5 +135,16 @@ export function mergeForSave(local, cloud, now = Date.now()) {
   const cloudSettings = normalizeSettings(cloud.settings)
   const settings = { ...cloudSettings, ...localSettings, ...unionMarkers(localSettings, cloudSettings, now) }
   const entries = mergeEntries(cloud.entries ?? [], local.entries, settings.deletedEntries, settings.restoredEntries)
+  return { entries, settings }
+}
+
+/**
+ * Chargement : le cloud écrase les réglages locaux, sauf si des changements locaux n'ont pas encore
+ * été synchronisés (hasUnsynced) — alors le local l'emporte, comme pour une sauvegarde.
+ */
+export function mergeForLoad(local, cloud, { hasUnsynced = false, now = Date.now() } = {}) {
+  if (hasUnsynced) return mergeForSave(local, cloud, now)
+  const settings = mergeSettings(local.settings, cloud?.settings ?? null, now)
+  const entries = mergeEntries(cloud?.entries ?? [], local.entries, settings.deletedEntries, settings.restoredEntries)
   return { entries, settings }
 }

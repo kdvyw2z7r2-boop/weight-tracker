@@ -6,6 +6,7 @@ import {
   mergeSettings,
   mergeTombstones,
   normalizeSettings,
+  mergeForLoad,
   mergeForSave,
   pruneTombstones,
   updateSyncMarkers,
@@ -269,5 +270,51 @@ describe('scénarios multi-appareils', () => {
     const B2 = world.persist(B, [...B.entries, e('c', '2026-11-03')], B.settings, NOW + 20)
     expect(B2.entries.map((x) => x.id)).toEqual(['c', 'b'])
     expect(world.cloud().settings.deletedEntries).toHaveProperty('a')
+  })
+})
+
+describe('mergeForLoad', () => {
+  const cloud = {
+    entries: [e('a', '2026-11-01'), e('c', '2026-11-03')],
+    settings: { targetWeight: 70, deletedEntries: { x: NOW } },
+  }
+  const local = {
+    entries: [e('a', '2026-11-01'), e('b', '2026-11-02')],
+    settings: { targetWeight: 65, deletedEntries: { y: NOW } },
+  }
+
+  it('sans changements locaux en attente : le cloud écrase les réglages, marqueurs unis', () => {
+    const merged = mergeForLoad(local, cloud, { hasUnsynced: false, now: NOW })
+    expect(merged.settings.targetWeight).toBe(70)
+    expect(merged.settings.deletedEntries).toEqual({ x: NOW, y: NOW })
+    expect(merged.entries.map((x) => x.id)).toEqual(['c', 'b', 'a'])
+  })
+
+  it('réglage modifié hors ligne puis rafraîchissement : la valeur locale est conservée', () => {
+    const merged = mergeForLoad(local, cloud, { hasUnsynced: true, now: NOW })
+    expect(merged.settings.targetWeight).toBe(65)
+    expect(merged.settings.deletedEntries).toEqual({ x: NOW, y: NOW })
+    expect(merged.entries.map((x) => x.id)).toEqual(['c', 'b', 'a'])
+  })
+
+  it('cloud vide : renvoie le local (élagué)', () => {
+    const merged = mergeForLoad(local, { entries: [], settings: null }, { hasUnsynced: false, now: NOW })
+    expect(merged.settings.targetWeight).toBe(65)
+    expect(merged.entries.map((x) => x.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('updateSyncMarkers — import (restoreAdded)', () => {
+  it('restoredAt = now pour les ids ajoutés même si le tombstone n\'existe que dans le cloud', () => {
+    const imported = [e('a', '2026-11-01')]
+    const markers = updateSyncMarkers({}, [], imported, NOW, { restoreAdded: true })
+    expect(markers.restoredEntries).toEqual({ a: NOW })
+    const cloud = { entries: [], settings: { deletedEntries: { a: NOW - 1000 } } }
+    const merged = mergeForSave({ entries: imported, settings: markers }, cloud, NOW)
+    expect(merged.entries.map((x) => x.id)).toEqual(['a'])
+  })
+  it('n\'ajoute rien pour les ids déjà présents', () => {
+    const list = [e('a', '2026-11-01')]
+    expect(updateSyncMarkers({}, list, list, NOW, { restoreAdded: true }).restoredEntries).toEqual({})
   })
 })

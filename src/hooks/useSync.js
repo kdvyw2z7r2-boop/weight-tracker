@@ -6,6 +6,7 @@ import { convertSettingsUnit, convertWeightValue } from '../utils/units'
 import {
   defaultSettings,
   mergeEntries,
+  mergeForLoad,
   mergeForSave,
   mergeSettings,
   normalizeSettings,
@@ -22,6 +23,7 @@ const LEGACY_SETTINGS_KEY = 'wt_settings'
 const USER_ENTRIES_PREFIX = 'wt_entries:'
 const USER_SETTINGS_PREFIX = 'wt_settings:'
 const USER_PHOTOS_PREFIX = 'wt_photos:'
+const USER_UNSYNCED_PREFIX = 'wt_unsynced:'
 const BACKGROUND_REFRESH_MIN_MS = 30 * 1000
 
 export { defaultSettings }
@@ -117,6 +119,20 @@ function getLocalSettingsKey(userId) {
 
 function getLocalPhotosKey(userId) {
   return `${USER_PHOTOS_PREFIX}${userId}`
+}
+
+// Drapeau « changements locaux non synchronisés » : posé quand une sauvegarde cloud échoue.
+function getUnsyncedKey(userId) {
+  return `${USER_UNSYNCED_PREFIX}${userId}`
+}
+
+function hasUnsyncedChanges(userId) {
+  return readFromStorage(getUnsyncedKey(userId)) === true
+}
+
+function setUnsyncedChanges(userId, value) {
+  if (value) writeToStorage(getUnsyncedKey(userId), true)
+  else removeFromStorage(getUnsyncedKey(userId))
 }
 
 function readLocalEntries(userId) {
@@ -418,7 +434,8 @@ function useSync(userId) {
     async (options) => {
       if (!userId) return
       const background = Boolean(options?.background)
-      if (background && loadingRef.current) return
+      // Pas de rafraîchissement discret pendant un chargement ou une sauvegarde en cours.
+      if (background && (loadingRef.current || savingCountRef.current > 0)) return
 
       loadingRef.current = true
       lastLoadRef.current = Date.now()
@@ -443,13 +460,15 @@ function useSync(userId) {
         // Un persist a eu lieu pendant le chargement : il fait sa propre fusion avec le cloud.
         if (isStale()) return
 
-        const mergedSettings = mergeSettings(localSettings, cloud.settings, now)
-        let mergedEntries = mergeEntries(
-          cloud.entries,
-          localEntries,
-          mergedSettings.deletedEntries,
-          mergedSettings.restoredEntries,
+        // Changements locaux pas encore synchronisés : le local l'emporte (sinon le cloud écrase les réglages).
+        const hasUnsynced = hasUnsyncedChanges(userId)
+        const merged = mergeForLoad(
+          { entries: localEntries, settings: localSettings },
+          cloud,
+          { hasUnsynced, now },
         )
+        const mergedSettings = normalizeSettings(merged.settings)
+        let mergedEntries = merged.entries
         let finalSettings = mergedSettings
         const cloudPhotos = cloud.photosByDate ?? {}
         const mergedPhotos = db && Object.keys(cloudPhotos).length > 0 ? cloudPhotos : localPhotos
@@ -467,10 +486,15 @@ function useSync(userId) {
           JSON.stringify(localSettings) !== JSON.stringify(defaultSettings) ||
           (db && Object.keys(localPhotos).length > 0)
 
-        if ((cloudWasEmpty && hasLocalData) || needsCloudResave(mergedEntries, mergedSettings, cloud)) {
+        if (
+          hasUnsynced ||
+          (cloudWasEmpty && hasLocalData) ||
+          needsCloudResave(mergedEntries, mergedSettings, cloud)
+        ) {
           beginSave()
           try {
             const saved = await saveMerged({ entries: mergedEntries, settings: mergedSettings })
+            setUnsyncedChanges(userId, false)
             mergedEntries = normalizeEntries(saved.entries)
             finalSettings = normalizeSettings(saved.settings)
           } finally {
@@ -524,6 +548,7 @@ function useSync(userId) {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
       if (Date.now() - lastLoadRef.current < BACKGROUND_REFRESH_MIN_MS) return
+      if (savingCountRef.current > 0) return
       loadData({ background: true })
     }
     document.addEventListener('visibilitychange', onVisible)
@@ -531,7 +556,7 @@ function useSync(userId) {
   }, [userId, loadData])
 
   const persist = useCallback(
-    async (nextEntries, nextSettings, nextPhotos = photosByDate) => {
+    async (nextEntries, nextSettings, nextPhotos = photosByDate, { restoreAdded = false } = {}) => {
       if (!userId) {
         setStorageMode('local')
         setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
@@ -542,7 +567,7 @@ function useSync(userId) {
       const sortedEntries = normalizeEntries(nextEntries)
       const baseSettings = normalizeSettings(nextSettings)
       const normalizedSettings = pruneMarkers(
-        { ...baseSettings, ...updateSyncMarkers(baseSettings, entries, sortedEntries, now) },
+        { ...baseSettings, ...updateSyncMarkers(baseSettings, entries, sortedEntries, now, { restoreAdded }) },
         now,
       )
       const normalizedPhotos = normalizePhotosMap(nextPhotos)
@@ -559,6 +584,7 @@ function useSync(userId) {
 
       try {
         const merged = await saveMerged({ entries: sortedEntries, settings: normalizedSettings })
+        setUnsyncedChanges(userId, false)
         clearLegacyStorage()
         setStorageMode(db ? 'supabase' : 'cloud')
         setSyncStatus('cloud')
@@ -567,6 +593,7 @@ function useSync(userId) {
           applyMerged(merged, { entries: sortedEntries, settings: normalizedSettings })
         }
       } catch {
+        setUnsyncedChanges(userId, true)
         setStorageMode('local')
         setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
       } finally {
@@ -763,7 +790,8 @@ function useSync(userId) {
       }
       const nextSettings = parsed.settings ? mergeSettings(settings, parsed.settings) : settings
       const nextPhotos = parsed.photosByDate ? normalizePhotosMap(parsed.photosByDate) : photosByDate
-      await persist(mergeEntries([], normalizeEntries(parsed.entries)), nextSettings, nextPhotos)
+      // restoreAdded : les ids importés absents d'ici sont restaurés, même si leur tombstone n'est que dans le cloud.
+      await persist(mergeEntries([], normalizeEntries(parsed.entries)), nextSettings, nextPhotos, { restoreAdded: true })
       return parsed
     },
     [persist, settings, photosByDate],
