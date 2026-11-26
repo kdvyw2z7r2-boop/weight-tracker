@@ -3,6 +3,15 @@ import { format } from 'date-fns'
 import { createSupabaseClient, isSupabaseConfigured, PHOTO_BUCKET } from '../lib/supabase'
 import { createSignedPhotoUrl, photoStoragePath } from '../utils/photo'
 import { convertSettingsUnit, convertWeightValue } from '../utils/units'
+import {
+  defaultSettings,
+  mergeEntries,
+  mergeSettings,
+  normalizeSettings,
+  sameTombstones,
+  sortByDateDesc,
+  updateTombstones,
+} from '../utils/syncMerge'
 
 const API_ENDPOINT = '/api/sync'
 const LEGACY_ENTRIES_KEY = 'wt_entries'
@@ -11,25 +20,9 @@ const USER_ENTRIES_PREFIX = 'wt_entries:'
 const USER_SETTINGS_PREFIX = 'wt_settings:'
 const USER_PHOTOS_PREFIX = 'wt_photos:'
 
-export const defaultSettings = {
-  targetWeight: 70,
-  height: 178,
-  unit: 'kg',
-  reminderEnabled: false,
-  reminderTime: '08:00',
-  theme: 'dark',
-  weeklyPace: null,
-  planSetupComplete: false,
-  planStartDate: null,
-  planStartWeight: null,
-  challengeStartDate: null,
-  challengeStartWeight: null,
-}
+export { defaultSettings }
 
 const round = (value) => Math.round(value * 100) / 100
-
-const sortByDateDesc = (items) =>
-  [...items].sort((a, b) => (a.date < b.date ? 1 : -1))
 
 const photoUnavailableMessage = 'Photos indisponibles hors connexion au cloud.'
 
@@ -56,11 +49,6 @@ function normalizeEntries(items) {
   )
 }
 
-function normalizeSettings(raw) {
-  if (!raw || typeof raw !== 'object') return { ...defaultSettings }
-  return { ...defaultSettings, ...raw }
-}
-
 function normalizePhotosMap(raw) {
   if (!raw || typeof raw !== 'object') return {}
   return Object.fromEntries(
@@ -68,24 +56,21 @@ function normalizePhotosMap(raw) {
   )
 }
 
-function mergeEntries(cloudEntries, localEntries) {
-  const byId = new Map()
-
-  for (const entry of [...cloudEntries, ...localEntries]) {
-    const existing = byId.get(entry.id)
-    if (!existing || (entry.createdAt ?? 0) >= (existing.createdAt ?? 0)) {
-      byId.set(entry.id, entry)
-    }
-  }
-
-  return sortByDateDesc([...byId.values()])
+function sameEntryIds(a, b) {
+  if (a.length !== b.length) return false
+  const ids = new Set(a.map((entry) => entry.id))
+  return b.every((entry) => ids.has(entry.id))
 }
 
-function mergeSettings(localSettings, cloudSettings) {
-  const local = normalizeSettings(localSettings)
-  const cloud = cloudSettings ? normalizeSettings(cloudSettings) : null
-  if (!cloud) return local
-  return { ...local, ...cloud }
+/** Faut-il renvoyer le résultat fusionné au cloud ? (ids, réglages ou tombstones différents) */
+function needsCloudResave(mergedEntries, mergedSettings, cloud) {
+  const { deletedEntries: mergedTombstones, ...mergedRest } = mergedSettings
+  const { deletedEntries: cloudTombstones, ...cloudRest } = cloud.settings ?? defaultSettings
+  return (
+    !sameEntryIds(mergedEntries, cloud.entries) ||
+    JSON.stringify(mergedRest) !== JSON.stringify(cloudRest) ||
+    !sameTombstones(mergedTombstones, cloudTombstones)
+  )
 }
 
 function readFromStorage(key) {
@@ -375,8 +360,8 @@ function useSync(userId) {
     try {
       if (db) {
         const cloud = await fetchSupabaseData(db, userId)
-        const mergedEntries = mergeEntries(cloud.entries, localEntries)
         const mergedSettings = mergeSettings(localSettings, cloud.settings)
+        const mergedEntries = mergeEntries(cloud.entries, localEntries, mergedSettings.deletedEntries)
         const mergedPhotos =
           Object.keys(cloud.photosByDate).length > 0 ? cloud.photosByDate : localPhotos
 
@@ -394,10 +379,7 @@ function useSync(userId) {
 
         if (cloudWasEmpty && hasLocalData) {
           await saveSupabaseData(db, userId, mergedEntries, mergedSettings)
-        } else if (
-          mergedEntries.length !== cloud.entries.length ||
-          JSON.stringify(mergedSettings) !== JSON.stringify(cloud.settings ?? defaultSettings)
-        ) {
+        } else if (needsCloudResave(mergedEntries, mergedSettings, cloud)) {
           await saveSupabaseData(db, userId, mergedEntries, mergedSettings)
         }
 
@@ -411,8 +393,8 @@ function useSync(userId) {
       }
 
       const cloud = await fetchCloudData(userId)
-      const mergedEntries = mergeEntries(cloud.entries, localEntries)
       const mergedSettings = mergeSettings(localSettings, cloud.settings)
+      const mergedEntries = mergeEntries(cloud.entries, localEntries, mergedSettings.deletedEntries)
 
       storeLocalEntries(userId, mergedEntries)
       storeLocalSettings(userId, mergedSettings)
@@ -424,10 +406,7 @@ function useSync(userId) {
 
       if (cloudWasEmpty && hasLocalData) {
         await saveCloudData(userId, mergedEntries, mergedSettings)
-      } else if (
-        mergedEntries.length !== cloud.entries.length ||
-        JSON.stringify(mergedSettings) !== JSON.stringify(cloud.settings ?? defaultSettings)
-      ) {
+      } else if (needsCloudResave(mergedEntries, mergedSettings, cloud)) {
         await saveCloudData(userId, mergedEntries, mergedSettings)
       }
 
@@ -470,7 +449,11 @@ function useSync(userId) {
       }
 
       const sortedEntries = normalizeEntries(nextEntries)
-      const normalizedSettings = normalizeSettings(nextSettings)
+      const baseSettings = normalizeSettings(nextSettings)
+      const normalizedSettings = {
+        ...baseSettings,
+        deletedEntries: updateTombstones(baseSettings.deletedEntries, entries, sortedEntries, Date.now()),
+      }
       const normalizedPhotos = normalizePhotosMap(nextPhotos)
 
       setEntries(sortedEntries)
@@ -500,7 +483,7 @@ function useSync(userId) {
         setIsSaving(false)
       }
     },
-    [userId, db, photosByDate],
+    [userId, db, photosByDate, entries],
   )
 
   const uploadDailyPhoto = useCallback(
