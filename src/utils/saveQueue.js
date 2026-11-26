@@ -1,7 +1,7 @@
 /**
  * Sérialise des sauvegardes asynchrones : une seule à la fois.
  * Les demandes arrivées pendant une sauvegarde sont fusionnées : seule la dernière est
- * exécutée ensuite, et toutes les promesses en attente suivent son résultat.
+ * exécutée ensuite, et toutes les promesses en attente suivent son résultat (valeur ou erreur).
  */
 export function createSaveQueue() {
   let running = false
@@ -13,8 +13,8 @@ export function createSaveQueue() {
       const { task, waiters } = pending
       pending = null
       try {
-        await task()
-        waiters.forEach((waiter) => waiter.resolve())
+        const result = await task()
+        waiters.forEach((waiter) => waiter.resolve(result))
       } catch (error) {
         waiters.forEach((waiter) => waiter.reject(error))
       }

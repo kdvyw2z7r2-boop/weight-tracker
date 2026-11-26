@@ -94,7 +94,7 @@ describe('createSaveQueue', () => {
         throw new Error('sync')
       }),
     ).rejects.toThrow('sync')
-    await expect(queue.enqueue(async () => 'ok')).resolves.toBeUndefined()
+    await expect(queue.enqueue(async () => 'ok')).resolves.toBe('ok')
   })
 
   it('fonctionne avec des timers simulés', async () => {
@@ -118,5 +118,17 @@ describe('createSaveQueue', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('résout chaque appel avec le résultat de la sauvegarde qui le couvre', async () => {
+    const queue = createSaveQueue()
+    const first = deferred()
+    const p1 = queue.enqueue(() => first.promise)
+    const p2 = queue.enqueue(async () => 'deux')
+    const p3 = queue.enqueue(async () => 'trois')
+    first.resolve('un')
+    await expect(p1).resolves.toBe('un')
+    await expect(p2).resolves.toBe('trois')
+    await expect(p3).resolves.toBe('trois')
   })
 })

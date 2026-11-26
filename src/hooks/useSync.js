@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { createSupabaseClient, isSupabaseConfigured, PHOTO_BUCKET } from '../lib/supabase'
 import { createSignedPhotoUrl, photoStoragePath } from '../utils/photo'
@@ -6,11 +6,13 @@ import { convertSettingsUnit, convertWeightValue } from '../utils/units'
 import {
   defaultSettings,
   mergeEntries,
+  mergeForSave,
   mergeSettings,
   normalizeSettings,
+  pruneMarkers,
   sameTombstones,
   sortByDateDesc,
-  updateTombstones,
+  updateSyncMarkers,
 } from '../utils/syncMerge'
 import { createSaveQueue } from '../utils/saveQueue'
 
@@ -20,6 +22,7 @@ const LEGACY_SETTINGS_KEY = 'wt_settings'
 const USER_ENTRIES_PREFIX = 'wt_entries:'
 const USER_SETTINGS_PREFIX = 'wt_settings:'
 const USER_PHOTOS_PREFIX = 'wt_photos:'
+const BACKGROUND_REFRESH_MIN_MS = 30 * 1000
 
 export { defaultSettings }
 
@@ -63,14 +66,19 @@ function sameEntryIds(a, b) {
   return b.every((entry) => ids.has(entry.id))
 }
 
-/** Faut-il renvoyer le résultat fusionné au cloud ? (ids, réglages ou tombstones différents) */
+/** Faut-il renvoyer le résultat fusionné au cloud ? (ids, réglages ou marqueurs différents) */
 function needsCloudResave(mergedEntries, mergedSettings, cloud) {
-  const { deletedEntries: mergedTombstones, ...mergedRest } = mergedSettings
-  const { deletedEntries: cloudTombstones, ...cloudRest } = cloud.settings ?? defaultSettings
+  const { deletedEntries: mergedDeleted, restoredEntries: mergedRestored, ...mergedRest } = mergedSettings
+  const {
+    deletedEntries: cloudDeleted,
+    restoredEntries: cloudRestored,
+    ...cloudRest
+  } = normalizeSettings(cloud.settings ?? defaultSettings)
   return (
     !sameEntryIds(mergedEntries, cloud.entries) ||
     JSON.stringify(mergedRest) !== JSON.stringify(cloudRest) ||
-    !sameTombstones(mergedTombstones, cloudTombstones)
+    !sameTombstones(mergedDeleted, cloudDeleted) ||
+    !sameTombstones(mergedRestored, cloudRestored)
   )
 }
 
@@ -188,19 +196,30 @@ function rowToEntry(row) {
   }
 }
 
-async function fetchSupabaseData(db, userId) {
-  const [entriesResult, settingsResult, photosResult] = await Promise.all([
+/** Entrées + réglages seulement (lecture avant écriture d'une sauvegarde). */
+async function fetchSupabaseCore(db, userId) {
+  const [entriesResult, settingsResult] = await Promise.all([
     db.from('entries').select('*').eq('user_id', userId).order('date', { ascending: false }),
     db.from('user_settings').select('settings').eq('user_id', userId).maybeSingle(),
-    db.from('daily_photos').select('date, storage_path').eq('user_id', userId),
   ])
 
   if (entriesResult.error) throw entriesResult.error
   if (settingsResult.error) throw settingsResult.error
+
+  return {
+    entries: normalizeEntries((entriesResult.data ?? []).map(rowToEntry)),
+    settings: settingsResult.data?.settings ? normalizeSettings(settingsResult.data.settings) : null,
+  }
+}
+
+async function fetchSupabaseData(db, userId) {
+  const [{ entries, settings }, photosResult] = await Promise.all([
+    fetchSupabaseCore(db, userId),
+    db.from('daily_photos').select('date, storage_path').eq('user_id', userId),
+  ])
+
   if (photosResult.error) throw photosResult.error
 
-  const entries = normalizeEntries((entriesResult.data ?? []).map(rowToEntry))
-  const settings = settingsResult.data?.settings ? normalizeSettings(settingsResult.data.settings) : null
   const photosByDate = {}
 
   for (const row of photosResult.data ?? []) {
@@ -348,92 +367,148 @@ function useSync(userId) {
   const db = useMemo(() => createSupabaseClient(userId), [userId])
   // Une sauvegarde cloud à la fois ; les demandes rapprochées sont fusionnées (la plus récente gagne).
   const [saveQueue] = useState(createSaveQueue)
+  const persistSeqRef = useRef(0)
+  const savingCountRef = useRef(0)
+  const lastLoadRef = useRef(0)
+  const loadingRef = useRef(false)
 
-  const loadData = useCallback(async () => {
-    if (!userId) return
+  const beginSave = useCallback(() => {
+    savingCountRef.current += 1
+    setIsSaving(true)
+  }, [])
 
-    setIsLoading(true)
-    setHasLoaded(false)
-    setError('')
+  const endSave = useCallback(() => {
+    savingCountRef.current = Math.max(0, savingCountRef.current - 1)
+    if (savingCountRef.current === 0) setIsSaving(false)
+  }, [])
 
-    const localEntries = readLocalEntries(userId)
-    const localSettings = readLocalSettings(userId)
-    const localPhotos = readLocalPhotos(userId)
+  /** Sauvegarde lecture-fusion-écriture, sérialisée : renvoie le résultat effectivement écrit. */
+  const saveMerged = useCallback(
+    (local) =>
+      saveQueue.enqueue(async () => {
+        const cloud = db ? await fetchSupabaseCore(db, userId) : await fetchCloudData(userId)
+        const merged = mergeForSave(local, cloud)
+        if (db) {
+          await saveSupabaseData(db, userId, merged.entries, merged.settings)
+        } else {
+          await saveCloudData(userId, merged.entries, merged.settings)
+        }
+        return merged
+      }),
+    [saveQueue, db, userId],
+  )
 
-    try {
-      if (db) {
-        const cloud = await fetchSupabaseData(db, userId)
-        const mergedSettings = mergeSettings(localSettings, cloud.settings)
-        const mergedEntries = mergeEntries(cloud.entries, localEntries, mergedSettings.deletedEntries)
-        const mergedPhotos =
-          Object.keys(cloud.photosByDate).length > 0 ? cloud.photosByDate : localPhotos
+  const applyMerged = useCallback(
+    (merged, current) => {
+      const nextEntries = normalizeEntries(merged.entries)
+      const nextSettings = normalizeSettings(merged.settings)
+      if (JSON.stringify(nextEntries) !== JSON.stringify(current.entries)) {
+        setEntries(nextEntries)
+        storeLocalEntries(userId, nextEntries)
+      }
+      if (JSON.stringify(nextSettings) !== JSON.stringify(current.settings)) {
+        setSettings(nextSettings)
+        storeLocalSettings(userId, nextSettings)
+      }
+    },
+    [userId],
+  )
+
+  const loadData = useCallback(
+    async (options) => {
+      if (!userId) return
+      const background = Boolean(options?.background)
+      if (background && loadingRef.current) return
+
+      loadingRef.current = true
+      lastLoadRef.current = Date.now()
+      const seqAtStart = persistSeqRef.current
+      const isStale = () => persistSeqRef.current !== seqAtStart
+
+      if (!background) {
+        setIsLoading(true)
+        setHasLoaded(false)
+        setError('')
+      }
+
+      const now = Date.now()
+      const localEntries = readLocalEntries(userId)
+      const localSettings = mergeSettings(readLocalSettings(userId), null, now)
+      const localPhotos = readLocalPhotos(userId)
+      // Données à afficher si le cloud échoue : le local, ou la fusion si elle a déjà eu lieu.
+      let fallback = { entries: localEntries, settings: localSettings, photos: localPhotos }
+
+      try {
+        const cloud = db ? await fetchSupabaseData(db, userId) : await fetchCloudData(userId)
+        // Un persist a eu lieu pendant le chargement : il fait sa propre fusion avec le cloud.
+        if (isStale()) return
+
+        const mergedSettings = mergeSettings(localSettings, cloud.settings, now)
+        let mergedEntries = mergeEntries(
+          cloud.entries,
+          localEntries,
+          mergedSettings.deletedEntries,
+          mergedSettings.restoredEntries,
+        )
+        let finalSettings = mergedSettings
+        const cloudPhotos = cloud.photosByDate ?? {}
+        const mergedPhotos = db && Object.keys(cloudPhotos).length > 0 ? cloudPhotos : localPhotos
 
         storeLocalEntries(userId, mergedEntries)
         storeLocalSettings(userId, mergedSettings)
         storeLocalPhotos(userId, mergedPhotos)
         clearLegacyStorage()
+        fallback = { entries: mergedEntries, settings: mergedSettings, photos: mergedPhotos }
 
         const cloudWasEmpty =
-          cloud.entries.length === 0 && !cloud.settings && Object.keys(cloud.photosByDate).length === 0
+          cloud.entries.length === 0 && !cloud.settings && Object.keys(cloudPhotos).length === 0
         const hasLocalData =
           localEntries.length > 0 ||
           JSON.stringify(localSettings) !== JSON.stringify(defaultSettings) ||
-          Object.keys(localPhotos).length > 0
+          (db && Object.keys(localPhotos).length > 0)
 
-        if (cloudWasEmpty && hasLocalData) {
-          await saveSupabaseData(db, userId, mergedEntries, mergedSettings)
-        } else if (needsCloudResave(mergedEntries, mergedSettings, cloud)) {
-          await saveSupabaseData(db, userId, mergedEntries, mergedSettings)
+        if ((cloudWasEmpty && hasLocalData) || needsCloudResave(mergedEntries, mergedSettings, cloud)) {
+          beginSave()
+          try {
+            const saved = await saveMerged({ entries: mergedEntries, settings: mergedSettings })
+            mergedEntries = normalizeEntries(saved.entries)
+            finalSettings = normalizeSettings(saved.settings)
+          } finally {
+            endSave()
+          }
+          if (isStale()) return
+          storeLocalEntries(userId, mergedEntries)
+          storeLocalSettings(userId, finalSettings)
         }
 
         setEntries(mergedEntries)
-        setSettings(mergedSettings)
+        setSettings(finalSettings)
         setPhotosByDate(mergedPhotos)
-        setStorageMode('supabase')
+        setStorageMode(db ? 'supabase' : 'cloud')
         setSyncStatus('cloud')
         setHasLoaded(true)
-        return
+      } catch (loadError) {
+        if (isStale()) return
+        storeLocalEntries(userId, fallback.entries)
+        storeLocalSettings(userId, fallback.settings)
+        storeLocalPhotos(userId, fallback.photos)
+        setEntries(fallback.entries)
+        setSettings(fallback.settings)
+        setPhotosByDate(fallback.photos)
+        setStorageMode('local')
+        setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
+        setHasLoaded(true)
+        console.error('Cloud sync failed:', loadError)
+      } finally {
+        loadingRef.current = false
+        if (!background) {
+          setIsLoading(false)
+          setHasLoaded(true)
+        }
       }
-
-      const cloud = await fetchCloudData(userId)
-      const mergedSettings = mergeSettings(localSettings, cloud.settings)
-      const mergedEntries = mergeEntries(cloud.entries, localEntries, mergedSettings.deletedEntries)
-
-      storeLocalEntries(userId, mergedEntries)
-      storeLocalSettings(userId, mergedSettings)
-      clearLegacyStorage()
-
-      const cloudWasEmpty = cloud.entries.length === 0 && !cloud.settings
-      const hasLocalData =
-        localEntries.length > 0 || JSON.stringify(localSettings) !== JSON.stringify(defaultSettings)
-
-      if (cloudWasEmpty && hasLocalData) {
-        await saveCloudData(userId, mergedEntries, mergedSettings)
-      } else if (needsCloudResave(mergedEntries, mergedSettings, cloud)) {
-        await saveCloudData(userId, mergedEntries, mergedSettings)
-      }
-
-      setEntries(mergedEntries)
-      setSettings(mergedSettings)
-      setPhotosByDate(localPhotos)
-      setStorageMode('cloud')
-      setSyncStatus('cloud')
-      setHasLoaded(true)
-    } catch (loadError) {
-      storeLocalEntries(userId, localEntries)
-      storeLocalSettings(userId, localSettings)
-      storeLocalPhotos(userId, localPhotos)
-      setEntries(localEntries)
-      setSettings(localSettings)
-      setPhotosByDate(localPhotos)
-      setStorageMode('local')
-      setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
-      setHasLoaded(true)
-      console.error('Cloud sync failed:', loadError)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [userId, db])
+    },
+    [userId, db, saveMerged, beginSave, endSave],
+  )
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -443,6 +518,18 @@ function useSync(userId) {
     return () => window.clearTimeout(timeoutId)
   }, [loadData])
 
+  // Retour au premier plan : rafraîchissement discret (sans écran de chargement), au plus toutes les 30 s.
+  useEffect(() => {
+    if (!userId) return undefined
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - lastLoadRef.current < BACKGROUND_REFRESH_MIN_MS) return
+      loadData({ background: true })
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [userId, loadData])
+
   const persist = useCallback(
     async (nextEntries, nextSettings, nextPhotos = photosByDate) => {
       if (!userId) {
@@ -451,13 +538,15 @@ function useSync(userId) {
         return
       }
 
+      const now = Date.now()
       const sortedEntries = normalizeEntries(nextEntries)
       const baseSettings = normalizeSettings(nextSettings)
-      const normalizedSettings = {
-        ...baseSettings,
-        deletedEntries: updateTombstones(baseSettings.deletedEntries, entries, sortedEntries, Date.now()),
-      }
+      const normalizedSettings = pruneMarkers(
+        { ...baseSettings, ...updateSyncMarkers(baseSettings, entries, sortedEntries, now) },
+        now,
+      )
       const normalizedPhotos = normalizePhotosMap(nextPhotos)
+      const seq = ++persistSeqRef.current
 
       setEntries(sortedEntries)
       setSettings(normalizedSettings)
@@ -465,28 +554,26 @@ function useSync(userId) {
       storeLocalEntries(userId, sortedEntries)
       storeLocalSettings(userId, normalizedSettings)
       storeLocalPhotos(userId, normalizedPhotos)
-      setIsSaving(true)
+      beginSave()
       setError('')
 
       try {
-        if (db) {
-          await saveQueue.enqueue(() => saveSupabaseData(db, userId, sortedEntries, normalizedSettings))
-          clearLegacyStorage()
-          setStorageMode('supabase')
-        } else {
-          await saveQueue.enqueue(() => saveCloudData(userId, sortedEntries, normalizedSettings))
-          clearLegacyStorage()
-          setStorageMode('cloud')
-        }
+        const merged = await saveMerged({ entries: sortedEntries, settings: normalizedSettings })
+        clearLegacyStorage()
+        setStorageMode(db ? 'supabase' : 'cloud')
         setSyncStatus('cloud')
+        // N'applique le résultat fusionné que si aucun changement local plus récent n'a eu lieu.
+        if (seq === persistSeqRef.current) {
+          applyMerged(merged, { entries: sortedEntries, settings: normalizedSettings })
+        }
       } catch {
         setStorageMode('local')
         setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
       } finally {
-        setIsSaving(false)
+        endSave()
       }
     },
-    [userId, db, photosByDate, entries, saveQueue],
+    [userId, db, photosByDate, entries, saveMerged, applyMerged, beginSave, endSave],
   )
 
   const uploadDailyPhoto = useCallback(
@@ -609,12 +696,17 @@ function useSync(userId) {
 
     setPhotosByDate({})
     storeLocalPhotos(userId, {})
-    await persist([], { ...defaultSettings }, {})
+    // Réglages par défaut, mais on garde les marqueurs de synchro (sinon les suppressions seraient perdues).
+    await persist(
+      [],
+      { ...defaultSettings, deletedEntries: settings.deletedEntries, restoredEntries: settings.restoredEntries },
+      {},
+    )
     clearLegacyStorage()
+    // La clé des réglages est conservée : elle porte les tombstones jusqu'à leur synchro.
     removeFromStorage(getLocalEntriesKey(userId))
-    removeFromStorage(getLocalSettingsKey(userId))
     removeFromStorage(getLocalPhotosKey(userId))
-  }, [persist, photosByDate, userId, db])
+  }, [persist, photosByDate, userId, db, settings])
 
   const clearEntries = useCallback(async () => {
     await clearAllData()

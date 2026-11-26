@@ -14,6 +14,7 @@ export const defaultSettings = {
   challengeStartDate: null,
   challengeStartWeight: null,
   deletedEntries: {},
+  restoredEntries: {},
 }
 
 export const sortByDateDesc = (items) => [...items].sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -26,17 +27,28 @@ function normalizeTombstones(raw) {
 }
 
 export function normalizeSettings(raw) {
-  if (!raw || typeof raw !== 'object') return { ...defaultSettings, deletedEntries: {} }
-  return { ...defaultSettings, ...raw, deletedEntries: normalizeTombstones(raw.deletedEntries) }
+  if (!raw || typeof raw !== 'object') return { ...defaultSettings, deletedEntries: {}, restoredEntries: {} }
+  return {
+    ...defaultSettings,
+    ...raw,
+    deletedEntries: normalizeTombstones(raw.deletedEntries),
+    restoredEntries: normalizeTombstones(raw.restoredEntries),
+  }
+}
+
+/** Une entrée est supprimée ssi deletedAt > (restoredAt ?? 0). */
+export function isDeletedEntry(id, deleted = {}, restored = {}) {
+  const deletedAt = deleted?.[id]
+  if (deletedAt == null) return false
+  return deletedAt > (restored?.[id] ?? 0)
 }
 
 /** Union par id (createdAt le plus récent gagne, local à égalité), sans les ids supprimés ; tri date DESC. */
-export function mergeEntries(cloudEntries, localEntries, tombstones = {}) {
-  const deleted = tombstones ?? {}
+export function mergeEntries(cloudEntries, localEntries, tombstones = {}, restores = {}) {
   const byId = new Map()
 
   for (const entry of [...cloudEntries, ...localEntries]) {
-    if (Object.hasOwn(deleted, entry.id)) continue
+    if (isDeletedEntry(entry.id, tombstones, restores)) continue
     const existing = byId.get(entry.id)
     if (!existing || (entry.createdAt ?? 0) >= (existing.createdAt ?? 0)) {
       byId.set(entry.id, entry)
@@ -60,15 +72,37 @@ export function pruneTombstones(tombstones, now, maxAgeMs = TOMBSTONE_MAX_AGE_MS
   )
 }
 
-/** Ajoute les ids retirés entre prevEntries et nextEntries, retire ceux (ré)ajoutés. */
-export function updateTombstones(tombstones, prevEntries, nextEntries, now) {
-  const result = { ...normalizeTombstones(tombstones) }
+/**
+ * Marqueurs de synchro après un changement local : deletedAt = now pour les ids retirés,
+ * restoredAt = now pour les ids (ré)ajoutés qui étaient supprimés.
+ */
+export function updateSyncMarkers(markers, prevEntries, nextEntries, now) {
+  const deletedEntries = normalizeTombstones(markers?.deletedEntries)
+  const restoredEntries = normalizeTombstones(markers?.restoredEntries)
+  const prevIds = new Set(prevEntries.map((entry) => entry.id))
   const nextIds = new Set(nextEntries.map((entry) => entry.id))
-  for (const entry of prevEntries) {
-    if (!nextIds.has(entry.id)) result[entry.id] = now
+  for (const id of prevIds) {
+    if (!nextIds.has(id)) deletedEntries[id] = now
   }
-  for (const id of nextIds) delete result[id]
-  return result
+  for (const id of nextIds) {
+    if (!prevIds.has(id) && isDeletedEntry(id, deletedEntries, restoredEntries)) restoredEntries[id] = now
+  }
+  return { deletedEntries, restoredEntries }
+}
+
+export function pruneMarkers(settings, now) {
+  return {
+    ...settings,
+    deletedEntries: pruneTombstones(settings.deletedEntries, now),
+    restoredEntries: pruneTombstones(settings.restoredEntries, now),
+  }
+}
+
+function unionMarkers(a, b, now) {
+  return {
+    deletedEntries: pruneTombstones(mergeTombstones(a.deletedEntries, b.deletedEntries), now),
+    restoredEntries: pruneTombstones(mergeTombstones(a.restoredEntries, b.restoredEntries), now),
+  }
 }
 
 export function sameTombstones(a, b) {
@@ -78,14 +112,26 @@ export function sameTombstones(a, b) {
   return keys.length === Object.keys(right).length && keys.every((id) => left[id] === right[id])
 }
 
-/** Le cloud écrase le local, sauf deletedEntries = union des deux, élaguée. */
+/** Chargement : le cloud écrase le local, sauf les marqueurs (union élaguée). */
 export function mergeSettings(localSettings, cloudSettings, now = Date.now()) {
   const local = normalizeSettings(localSettings)
-  if (!cloudSettings) return { ...local, deletedEntries: pruneTombstones(local.deletedEntries, now) }
+  if (!cloudSettings) return pruneMarkers(local, now)
   const cloud = normalizeSettings(cloudSettings)
-  return {
-    ...local,
-    ...cloud,
-    deletedEntries: pruneTombstones(mergeTombstones(local.deletedEntries, cloud.deletedEntries), now),
+  return { ...local, ...cloud, ...unionMarkers(local, cloud, now) }
+}
+
+/**
+ * Sauvegarde (lecture-fusion-écriture) : les réglages locaux l'emportent (l'utilisateur vient de
+ * les changer), les marqueurs sont unis, et les entrées du cloud non supprimées sont conservées.
+ */
+export function mergeForSave(local, cloud, now = Date.now()) {
+  const localSettings = normalizeSettings(local.settings)
+  if (!cloud) {
+    const settings = pruneMarkers(localSettings, now)
+    return { entries: mergeEntries([], local.entries, settings.deletedEntries, settings.restoredEntries), settings }
   }
+  const cloudSettings = normalizeSettings(cloud.settings)
+  const settings = { ...cloudSettings, ...localSettings, ...unionMarkers(localSettings, cloudSettings, now) }
+  const entries = mergeEntries(cloud.entries ?? [], local.entries, settings.deletedEntries, settings.restoredEntries)
+  return { entries, settings }
 }
