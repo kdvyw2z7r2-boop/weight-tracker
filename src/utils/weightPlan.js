@@ -1,4 +1,7 @@
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns'
+import { KG_TO_LBS } from './units'
+
+export { formatPace, formatWeight } from './format'
 
 export const PACE_MIN = 0.1
 export const PACE_MAX = 0.9
@@ -33,15 +36,18 @@ export function resolvePlanAnchor(settings, entries) {
   }
 }
 
-export function formatWeight(value, unit = 'kg') {
-  if (value == null || Number.isNaN(value)) return '—'
-  const formatted = Number(value).toFixed(1)
-  return unit === 'kg' ? formatted.replace('.', ',') : formatted
-}
-
-export function formatPace(pace) {
-  if (pace == null || Number.isNaN(pace)) return '—'
-  return `${pace.toFixed(2).replace('.', ',')} kg/sem.`
+// Pace bounds are defined in kg/week; the planner shows them in the user's unit.
+export function getPaceRange(unit = 'kg') {
+  const factor = unit === 'lbs' ? KG_TO_LBS : 1
+  const scale = (value) => Math.round(value * factor * 100) / 100
+  return {
+    min: scale(PACE_MIN),
+    max: scale(PACE_MAX),
+    recommendedMin: scale(PACE_RECOMMENDED_MIN),
+    recommendedMax: scale(PACE_RECOMMENDED_MAX),
+    step: unit === 'lbs' ? 0.02 : 0.05,
+    defaultPace: scale(DEFAULT_WEEKLY_PACE),
+  }
 }
 
 export function computeWeightPlan({ startWeight, targetWeight, weeklyPace, startDate }) {

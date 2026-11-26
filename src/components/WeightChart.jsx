@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { formatWeight, formatWeightWithUnit } from '../utils/format'
 import {
   Area,
   CartesianGrid,
@@ -12,6 +13,8 @@ import {
   YAxis,
 } from 'recharts'
 import { toChartLabel } from '../utils/weightPlan'
+import { CHART_COLORS as C } from '../utils/chartColors'
+import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion'
 
 function CustomTooltip({ active, payload, unit }) {
   if (!active || !payload?.length) return null
@@ -22,13 +25,13 @@ function CustomTooltip({ active, payload, unit }) {
     <div className="rounded-xl border border-border bg-bg-card px-3 py-2 shadow-lg">
       <p className="text-[12px] text-text-tertiary">{point.date}</p>
       <p className="mt-0.5 text-sm font-semibold text-text-primary">
-        {point.weight} {unit}
+        {formatWeightWithUnit(point.weight, unit)}
       </p>
       {point.avg ? (
-        <p className="mt-0.5 text-[12px] text-accent-green">Moy. : {point.avg} {unit}</p>
+        <p className="mt-0.5 text-[12px] text-accent-green">Moy. : {formatWeightWithUnit(point.avg, unit)}</p>
       ) : null}
       {point.projected ? (
-        <p className="mt-0.5 text-[12px] text-[#A78BFA]">Projection plan</p>
+        <p className="mt-0.5 text-[12px] text-plan">Projection plan</p>
       ) : null}
     </div>
   )
@@ -38,7 +41,7 @@ function CheckpointMarker({ cx, cy }) {
   if (cx == null || cy == null) return null
   return (
     <g transform={`translate(${cx}, ${cy})`}>
-      <circle r={8} fill="#141414" stroke="#A78BFA" strokeWidth={1.5} />
+      <circle r={8} fill={C.card} stroke={C.plan} strokeWidth={1.5} />
       <text y={3} textAnchor="middle" fontSize={9}>
         🏁
       </text>
@@ -47,6 +50,7 @@ function CheckpointMarker({ cx, cy }) {
 }
 
 function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = null }) {
+  const reducedMotion = usePrefersReducedMotion()
   const chartData = useMemo(() => {
     const historical = data.map((entry) => ({
       ...entry,
@@ -72,9 +76,9 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
 
     const merged = [...historical]
     futurePoints.forEach((point) => {
-      if (!merged.some((item) => item.date === point.date)) {
-        merged.push(point)
-      }
+      const existing = merged.find((item) => item.date === point.date)
+      if (existing) existing.projection = point.projection
+      else merged.push(point)
     })
 
     return merged.sort((a, b) => (a.date > b.date ? 1 : -1))
@@ -101,14 +105,14 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
         <ComposedChart data={chartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(96,165,250,0.25)" />
-              <stop offset="100%" stopColor="rgba(96,165,250,0)" />
+              <stop offset="0%" stopColor={C.weight} stopOpacity={0.25} />
+              <stop offset="100%" stopColor={C.weight} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
           <XAxis
             dataKey="label"
-            stroke="#4B5563"
+            stroke={C.axis}
             tick={{ fontSize: 11 }}
             axisLine={false}
             tickLine={false}
@@ -116,31 +120,32 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
             interval="preserveStartEnd"
           />
           <YAxis
-            stroke="#4B5563"
+            stroke={C.axis}
             tick={{ fontSize: 11 }}
             domain={[yMin - 1, yMax + 1]}
             axisLine={false}
             tickLine={false}
             width={32}
-            tickFormatter={(v) => v.toString().replace('.', ',')}
+            tickFormatter={formatWeight}
           />
           <Tooltip content={<CustomTooltip unit={unit} />} cursor={{ stroke: 'rgba(255,255,255,0.1)' }} />
           {Number.isFinite(targetWeight) ? (
             <ReferenceLine
               y={targetWeight}
-              stroke="#4B5563"
+              stroke={C.axis}
               strokeDasharray="4 4"
-              label={{ value: 'Objectif', position: 'insideTopRight', fill: '#4B5563', fontSize: 10 }}
+              label={{ value: 'Objectif', position: 'insideTopRight', fill: C.axis, fontSize: 10 }}
             />
           ) : null}
           <Area
             type="monotone"
             dataKey="weight"
-            stroke="#60A5FA"
+            stroke={C.weight}
             strokeWidth={2}
             fill="url(#weightGradient)"
-            dot={{ r: 3, fill: '#60A5FA', strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: '#60A5FA', stroke: '#fff', strokeWidth: 2 }}
+            dot={{ r: 3, fill: C.weight, strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: C.weight, stroke: C.text, strokeWidth: 2 }}
+            isAnimationActive={!reducedMotion}
             animationDuration={800}
             animationEasing="ease-out"
             connectNulls={false}
@@ -149,22 +154,24 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
             <Line
               type="monotone"
               dataKey="projection"
-              stroke="#A78BFA"
+              stroke={C.plan}
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}
               connectNulls
+              isAnimationActive={!reducedMotion}
               animationDuration={900}
             />
           ) : null}
           <Line
             type="monotone"
             dataKey="avg"
-            stroke="#4ADE80"
+            stroke={C.avg}
             strokeWidth={2}
             strokeDasharray="6 4"
             dot={false}
             connectNulls
+            isAnimationActive={!reducedMotion}
             animationDuration={900}
           />
           {plan?.checkpoints?.map((cp) => (

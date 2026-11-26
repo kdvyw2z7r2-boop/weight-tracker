@@ -7,6 +7,8 @@ import PhotoActionSheet from './components/PhotoActionSheet'
 import PhotoCompareModal from './components/PhotoCompareModal'
 import PhotoViewerModal from './components/PhotoViewerModal'
 import WeightPlanModal from './components/WeightPlanModal'
+import useDailyReminder from './hooks/useDailyReminder'
+import useScrollDirection from './hooks/useScrollDirection'
 import useSync from './hooks/useSync'
 import useUserId from './hooks/useUserId'
 import { buildEntryComparePair } from './utils/progressPhotos'
@@ -14,6 +16,27 @@ import DashboardScreen from './screens/DashboardScreen'
 import LogScreen from './screens/LogScreen'
 import ProgressScreen from './screens/ProgressScreen'
 import SettingsScreen from './screens/SettingsScreen'
+
+const SYNC_PILL_TITLES = {
+  'local-offline': 'Mode hors ligne : impossible de joindre le cloud pour le moment. Vos données restent sur cet appareil.',
+  'local-unconfigured': 'Supabase non configuré : vos données restent sur cet appareil.',
+}
+
+function SyncStatusPill({ status }) {
+  const title = SYNC_PILL_TITLES[status]
+  if (!title) return null
+  return (
+    <span
+      role="status"
+      title={title}
+      aria-label={`Hors ligne · données locales. ${title}`}
+      className="flex h-7 min-w-0 items-center gap-1.5 rounded-full bg-bg-elevated px-2.5 text-[11px] font-medium text-text-secondary"
+    >
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
+      <span className="truncate">Hors ligne · données locales</span>
+    </span>
+  )
+}
 
 function LoadingScreen({ error, onRetry }) {
   return (
@@ -41,6 +64,7 @@ function LoadingScreen({ error, onRetry }) {
 
 function App() {
   const userId = useUserId()
+  const isScrollingDown = useScrollDirection()
   const sync = useSync(userId)
   const [tab, setTab] = useState('dashboard')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -51,7 +75,7 @@ function App() {
   const [photoCompareEntry, setPhotoCompareEntry] = useState(null)
   const [addModalDate, setAddModalDate] = useState(null)
 
-  const { settings, updateSettings, resetSettings } = sync
+  const { settings, updateSettings } = sync
   const latest = sync.entries[0]
   const canConfigurePlan = Boolean(latest && settings.targetWeight && latest.weight > settings.targetWeight)
   const shouldAutoOpenPlan =
@@ -74,6 +98,14 @@ function App() {
     setAddModalDate(date)
     setIsModalOpen(true)
   }, [])
+
+  useDailyReminder({
+    userId,
+    settings,
+    entries: sync.entries,
+    onAdd: openAddModal,
+    ready: sync.hasLoaded && !sync.isLoading,
+  })
 
   const closeAddModal = useCallback(() => {
     setIsModalOpen(false)
@@ -129,7 +161,6 @@ function App() {
             entriesApi={sync}
             settings={settings}
             updateSettings={updateSettings}
-            resetSettings={resetSettings}
             onEditPlan={openPlanModal}
           />
         )
@@ -145,7 +176,7 @@ function App() {
           />
         )
     }
-  }, [tab, sync, settings, updateSettings, resetSettings, openPlanModal, openAddModal, handlePhotoPress])
+  }, [tab, sync, settings, updateSettings, openPlanModal, openAddModal, handlePhotoPress])
 
   if (sync.isLoading || !sync.hasLoaded) {
     return <LoadingScreen error={sync.error} onRetry={sync.reload} />
@@ -161,8 +192,8 @@ function App() {
   return (
     <div className="relative min-h-screen bg-bg-primary text-text-primary">
       <div className="ambient-glow" aria-hidden="true" />
-      <main className="relative z-10 mx-auto w-full max-w-md px-4 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] pt-4">
-        <InstallAppTutorial />
+      <main className="relative z-10 mx-auto w-full max-w-md px-4 pb-[calc(var(--nav-h)+56px+16px)] pt-4">
+        <InstallAppTutorial leading={tab === 'dashboard' ? <SyncStatusPill status={sync.syncStatus} /> : null} />
         {sync.error ? (
           <div className="mb-3 rounded-2xl border border-accent-red/20 bg-accent-red/10 px-4 py-3 text-[13px] leading-relaxed text-accent-red">
             {sync.error}
@@ -176,6 +207,7 @@ function App() {
           type="button"
           onClick={() => openAddModal()}
           className="fab"
+          data-hidden={isScrollingDown}
           aria-label="Ajouter une pesée"
         >
           +

@@ -10,12 +10,14 @@ import {
 } from 'recharts'
 import { formatDatePlanShort } from '../utils/locale'
 import { formatWeight, toChartLabel } from '../utils/weightPlan'
+import { CHART_COLORS as C } from '../utils/chartColors'
+import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion'
 
 function CheckpointDot({ cx, cy }) {
   if (cx == null || cy == null) return null
   return (
     <g transform={`translate(${cx}, ${cy})`}>
-      <circle r={10} fill="#141414" stroke="#A78BFA" strokeWidth={2} />
+      <circle r={10} fill={C.card} stroke={C.plan} strokeWidth={2} />
       <text y={4} textAnchor="middle" fontSize={11}>
         🏁
       </text>
@@ -27,7 +29,7 @@ function GoalDot({ cx, cy }) {
   if (cx == null || cy == null) return null
   return (
     <g transform={`translate(${cx}, ${cy})`}>
-      <circle r={10} fill="#141414" stroke="#FBBF24" strokeWidth={2} />
+      <circle r={10} fill={C.card} stroke={C.goal} strokeWidth={2} />
       <text y={4} textAnchor="middle" fontSize={10}>
         🏆
       </text>
@@ -39,13 +41,14 @@ function StartDot({ cx, cy }) {
   if (cx == null || cy == null) return null
   return (
     <g transform={`translate(${cx}, ${cy})`}>
-      <circle r={10} fill="#141414" stroke="#A78BFA" strokeWidth={2} />
-      <circle r={4} fill="#A78BFA" />
+      <circle r={10} fill={C.card} stroke={C.plan} strokeWidth={2} />
+      <circle r={4} fill={C.plan} />
     </g>
   )
 }
 
 function PlanChart({ plan, unit = 'kg', compact = false }) {
+  const reducedMotion = usePrefersReducedMotion()
   if (!plan?.trajectory?.length) {
     return (
       <div className="flex h-52 items-center justify-center text-[14px] text-text-tertiary">
@@ -75,14 +78,14 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
         <ComposedChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 4 }}>
           <defs>
             <linearGradient id="planGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(167,139,250,0.2)" />
-              <stop offset="100%" stopColor="rgba(167,139,250,0)" />
+              <stop offset="0%" stopColor={C.plan} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={C.plan} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical />
+          <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical />
           <XAxis
             dataKey="label"
-            stroke="#4B5563"
+            stroke={C.axis}
             tick={{ fontSize: 10 }}
             axisLine={false}
             tickLine={false}
@@ -90,7 +93,7 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
             dy={6}
           />
           <YAxis
-            stroke="#4B5563"
+            stroke={C.axis}
             tick={{ fontSize: 10 }}
             domain={[yMin, yMax]}
             axisLine={false}
@@ -101,14 +104,15 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
           <Line
             type="monotone"
             dataKey="weight"
-            stroke="#A78BFA"
+            stroke={C.plan}
             strokeWidth={2.5}
             dot={false}
+            isAnimationActive={!reducedMotion}
             animationDuration={800}
           />
           {startPoint ? (
             <>
-              <ReferenceLine x={startPoint.label} stroke="#A78BFA" strokeOpacity={0.35} />
+              <ReferenceLine x={startPoint.label} stroke={C.plan} strokeOpacity={0.35} />
               <ReferenceDot
                 x={startPoint.label}
                 y={startPoint.weight}
@@ -119,7 +123,7 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
                     : {
                         value: `Actuel\n${formatWeight(startPoint.weight, unit)}`,
                         position: 'bottom',
-                        fill: '#9CA3AF',
+                        fill: C.textSecondary,
                         fontSize: 10,
                       }
                 }
@@ -136,7 +140,7 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
           ))}
           {goalPoint ? (
             <>
-              <ReferenceLine x={goalPoint.label} stroke="#FBBF24" strokeOpacity={0.35} />
+              <ReferenceLine x={goalPoint.label} stroke={C.goal} strokeOpacity={0.35} />
               <ReferenceDot
                 x={goalPoint.label ?? toChartLabel(plan.endDate)}
                 y={goalPoint.weight}
@@ -147,7 +151,7 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
                     : {
                         value: `${formatDatePlanShort(plan.endDate)}\n${formatWeight(plan.targetWeight, unit)}`,
                         position: 'bottom',
-                        fill: '#FBBF24',
+                        fill: C.goal,
                         fontSize: 10,
                       }
                 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { createSupabaseClient, isSupabaseConfigured, PHOTO_BUCKET } from '../lib/supabase'
 import { createSignedPhotoUrl, photoStoragePath } from '../utils/photo'
+import { convertSettingsUnit, convertWeightValue } from '../utils/units'
 
 const API_ENDPOINT = '/api/sync'
 const LEGACY_ENTRIES_KEY = 'wt_entries'
@@ -21,23 +22,16 @@ export const defaultSettings = {
   planSetupComplete: false,
   planStartDate: null,
   planStartWeight: null,
+  challengeStartDate: null,
+  challengeStartWeight: null,
 }
 
-const kgToLbs = (kg) => kg * 2.20462
-const lbsToKg = (lbs) => lbs / 2.20462
 const round = (value) => Math.round(value * 100) / 100
 
 const sortByDateDesc = (items) =>
   [...items].sort((a, b) => (a.date < b.date ? 1 : -1))
 
-const localFallbackMessage =
-  'Mode local : impossible de joindre le cloud pour le moment. Vos données restent sur cet appareil.'
-
-const missingSupabaseEnvMessage =
-  'Supabase non configuré au build. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sur Vercel, puis redéployez.'
-
-const photoUnavailableMessage =
-  'Les photos nécessitent Supabase. Configurez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.'
+const photoUnavailableMessage = 'Photos indisponibles hors connexion au cloud.'
 
 function formatStorageError(error) {
   const message = error?.message ?? ''
@@ -363,6 +357,7 @@ function useSync(userId) {
   const [isSaving, setIsSaving] = useState(false)
   const [storageMode, setStorageMode] = useState(isSupabaseConfigured ? 'supabase' : 'cloud')
   const [error, setError] = useState('')
+  const [syncStatus, setSyncStatus] = useState(isSupabaseConfigured ? 'cloud' : 'local-unconfigured')
 
   const db = useMemo(() => createSupabaseClient(userId), [userId])
 
@@ -410,6 +405,7 @@ function useSync(userId) {
         setSettings(mergedSettings)
         setPhotosByDate(mergedPhotos)
         setStorageMode('supabase')
+        setSyncStatus('cloud')
         setHasLoaded(true)
         return
       }
@@ -439,6 +435,7 @@ function useSync(userId) {
       setSettings(mergedSettings)
       setPhotosByDate(localPhotos)
       setStorageMode('cloud')
+      setSyncStatus('cloud')
       setHasLoaded(true)
     } catch (loadError) {
       storeLocalEntries(userId, localEntries)
@@ -448,7 +445,7 @@ function useSync(userId) {
       setSettings(localSettings)
       setPhotosByDate(localPhotos)
       setStorageMode('local')
-      setError(db ? localFallbackMessage : missingSupabaseEnvMessage)
+      setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
       setHasLoaded(true)
       console.error('Cloud sync failed:', loadError)
     } finally {
@@ -468,7 +465,7 @@ function useSync(userId) {
     async (nextEntries, nextSettings, nextPhotos = photosByDate) => {
       if (!userId) {
         setStorageMode('local')
-        setError(localFallbackMessage)
+        setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
         return
       }
 
@@ -495,9 +492,10 @@ function useSync(userId) {
           clearLegacyStorage()
           setStorageMode('cloud')
         }
+        setSyncStatus('cloud')
       } catch {
         setStorageMode('local')
-        setError(localFallbackMessage)
+        setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
       } finally {
         setIsSaving(false)
       }
@@ -529,9 +527,9 @@ function useSync(userId) {
         return uploaded
       } catch (uploadError) {
         setStorageMode('local')
-        const message = uploadError.message || localFallbackMessage
+        const message = uploadError.message || 'Impossible d\'envoyer la photo.'
         setError(message)
-        throw new Error(message)
+        throw new Error(message, { cause: uploadError })
       } finally {
         setIsSaving(false)
       }
@@ -562,7 +560,7 @@ function useSync(userId) {
         setStorageMode('supabase')
       } catch (deleteError) {
         setStorageMode('local')
-        setError(deleteError.message || localFallbackMessage)
+        setError(deleteError.message || 'Impossible de supprimer la photo.')
         throw deleteError
       } finally {
         setIsSaving(false)
@@ -599,13 +597,16 @@ function useSync(userId) {
     [entries, settings, persist],
   )
 
-  const deleteEntry = useCallback(
-    async (id) => {
-      const next = entries.filter((entry) => entry.id !== id)
+  const deleteEntries = useCallback(
+    async (ids) => {
+      const toRemove = new Set(ids)
+      const next = entries.filter((entry) => !toRemove.has(entry.id))
       await persist(next, settings)
     },
     [entries, settings, persist],
   )
+
+  const deleteEntry = useCallback((id) => deleteEntries([id]), [deleteEntries])
 
   const updateSettings = useCallback(
     async (patch) => {
@@ -614,10 +615,6 @@ function useSync(userId) {
     },
     [entries, settings, persist],
   )
-
-  const resetSettings = useCallback(async () => {
-    await persist(entries, { ...defaultSettings })
-  }, [entries, persist])
 
   const clearAllData = useCallback(async () => {
     if (db && Object.keys(photosByDate).length) {
@@ -697,11 +694,8 @@ function useSync(userId) {
   const convertAllUnits = useCallback(
     async (nextUnit) => {
       if (nextUnit === settings.unit) return
-      const next = entries.map((entry) => ({
-        ...entry,
-        weight: round(nextUnit === 'lbs' ? kgToLbs(entry.weight) : lbsToKg(entry.weight)),
-      }))
-      await persist(next, { ...settings, unit: nextUnit })
+      const next = entries.map((entry) => ({ ...entry, weight: convertWeightValue(entry.weight, nextUnit) }))
+      await persist(next, convertSettingsUnit(settings, nextUnit))
     },
     [entries, settings, persist],
   )
@@ -716,14 +710,15 @@ function useSync(userId) {
       hasLoaded,
       isSaving,
       storageMode,
+      syncStatus,
       error,
       isSupabaseConfigured,
       reload: loadData,
       addEntry,
       updateEntry,
       deleteEntry,
+      deleteEntries,
       updateSettings,
-      resetSettings,
       clearAllData,
       clearEntries,
       getMovingAverage,
@@ -745,13 +740,14 @@ function useSync(userId) {
       hasLoaded,
       isSaving,
       storageMode,
+      syncStatus,
       error,
       loadData,
       addEntry,
       updateEntry,
       deleteEntry,
+      deleteEntries,
       updateSettings,
-      resetSettings,
       clearAllData,
       clearEntries,
       getMovingAverage,

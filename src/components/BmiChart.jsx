@@ -11,6 +11,8 @@ import {
   YAxis,
 } from 'recharts'
 import { BMI_ZONES } from '../utils/stats'
+import { CHART_COLORS as C } from '../utils/chartColors'
+import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion'
 
 function BmiTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
@@ -31,6 +33,7 @@ function BmiTooltip({ active, payload }) {
 }
 
 function BmiChart({ data, movingAverage = [] }) {
+  const reducedMotion = usePrefersReducedMotion()
   const chartData = useMemo(
     () =>
       data.map((entry) => ({
@@ -58,14 +61,14 @@ function BmiChart({ data, movingAverage = [] }) {
         <ComposedChart data={chartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="bmiGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(56,189,248,0.25)" />
-              <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+              <stop offset="0%" stopColor={C.weight} stopOpacity={0.25} />
+              <stop offset="100%" stopColor={C.weight} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
           <XAxis
             dataKey="label"
-            stroke="#4B5563"
+            stroke={C.axis}
             tick={{ fontSize: 11 }}
             axisLine={false}
             tickLine={false}
@@ -73,7 +76,7 @@ function BmiChart({ data, movingAverage = [] }) {
             interval="preserveStartEnd"
           />
           <YAxis
-            stroke="#4B5563"
+            stroke={C.axis}
             tick={{ fontSize: 11 }}
             domain={[Math.max(15, yMin - 1), yMax + 1]}
             axisLine={false}
@@ -86,18 +89,19 @@ function BmiChart({ data, movingAverage = [] }) {
             <ReferenceLine
               key={zone.label}
               y={zone.min}
-              stroke="rgba(255,255,255,0.08)"
+              stroke={C.grid}
               strokeDasharray="3 3"
             />
           ))}
           <Area
             type="monotone"
             dataKey="bmi"
-            stroke="#38BDF8"
+            stroke={C.weight}
             strokeWidth={2}
             fill="url(#bmiGradient)"
-            dot={{ r: 3, fill: '#38BDF8', strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: '#38BDF8', stroke: '#fff', strokeWidth: 2 }}
+            dot={{ r: 3, fill: C.weight, strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: C.weight, stroke: C.text, strokeWidth: 2 }}
+            isAnimationActive={!reducedMotion}
             animationDuration={800}
             animationEasing="ease-out"
             connectNulls={false}
@@ -105,11 +109,12 @@ function BmiChart({ data, movingAverage = [] }) {
           <Line
             type="monotone"
             dataKey="avg"
-            stroke="#4ADE80"
+            stroke={C.avg}
             strokeWidth={2}
             strokeDasharray="6 4"
             dot={false}
             connectNulls
+            isAnimationActive={!reducedMotion}
             animationDuration={900}
           />
         </ComposedChart>

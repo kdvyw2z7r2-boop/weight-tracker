@@ -180,7 +180,7 @@ function AddWeightModal({
           <p className="section-label mb-3 text-center">Photo du jour</p>
           {!isSupabaseConfigured ? (
             <p className="mb-3 text-center text-[12px] leading-relaxed text-text-tertiary">
-              Supabase requis pour les photos. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.
+              Photos indisponibles hors connexion au cloud.
             </p>
           ) : null}
           {hasPendingImage ? (

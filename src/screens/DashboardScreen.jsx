@@ -3,29 +3,29 @@ import ProgressCompare from '../components/ProgressCompare'
 import ProgressRing from '../components/ProgressRing'
 import WeightChart from '../components/WeightChart'
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
-import { formatDateLong } from '../utils/locale'
+import { getChallengeEntries, resolveChallengeStart } from '../utils/challenge'
+import { formatDateLong, formatDateShort } from '../utils/locale'
 import {
   getBmi,
-  getBmiCategory,
   getCurrentStreak,
   getMonthVariation,
 } from '../utils/stats'
-import { computeWeightPlan, formatPace, resolvePlanAnchor } from '../utils/weightPlan'
+import { computeWeightPlan, resolvePlanAnchor } from '../utils/weightPlan'
+import { formatPace, formatWeight, formatWeightWithUnit } from '../utils/format'
 
 function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEditPlan }) {
   const latest = entries[0]
   const previous = entries[1]
   const delta = latest && previous ? latest.weight - previous.weight : null
-  const sortedAsc = useMemo(
-    () => [...entries].sort((a, b) => (a.date > b.date ? 1 : -1)),
-    [entries],
+  const challengeEntries = useMemo(
+    () => getChallengeEntries(entries, settings.challengeStartDate),
+    [entries, settings.challengeStartDate],
   )
-  const firstEntry = sortedAsc[0]
-  const startWeight = firstEntry?.weight ?? latest?.weight ?? settings.targetWeight
+  const challengeStart = resolveChallengeStart(settings, entries)
+  const startWeight = challengeStart?.startWeight ?? latest?.weight ?? settings.targetWeight
   const monthVariation = getMonthVariation(entries)
   const streak = getCurrentStreak(entries)
   const bmi = latest ? getBmi(latest.weight, settings.height, settings.unit) : null
-  const bmiCategory = getBmiCategory(bmi)
   const animatedWeight = useAnimatedNumber(latest?.weight ?? 0, 800)
 
   const weightPlan = useMemo(() => {
@@ -38,40 +38,30 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
       weeklyPace: settings.weeklyPace,
       startDate: anchor.startDate,
     })
-  }, [settings.weeklyPace, settings.targetWeight, settings.planStartDate, settings.planStartWeight, entries])
+  }, [settings, entries])
 
-  const entriesAsc = useMemo(() => [...entries].reverse(), [entries])
+  const entriesAsc = useMemo(() => [...challengeEntries].reverse(), [challengeEntries])
 
   const deltaLabel =
     entries.length === 0
       ? 'Ajoutez votre première pesée'
       : delta === null
         ? '—'
-        : `${delta > 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1).replace('.', ',')} ${settings.unit}`
-
-  const deltaColor =
-    delta === null ? 'text-text-tertiary' : delta <= 0 ? 'text-accent-green' : 'text-accent-red'
+        : `${delta > 0 ? '▲' : '▼'} ${formatWeightWithUnit(Math.abs(delta), settings.unit)}`
 
   const monthVarLabel =
     monthVariation === null
       ? '—'
-      : `${monthVariation > 0 ? '+' : ''}${monthVariation.toFixed(1).replace('.', ',')} ${settings.unit}`
+      : `${monthVariation > 0 ? '+' : ''}${formatWeightWithUnit(monthVariation, settings.unit)}`
 
-  const monthVarColor =
-    monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'text-accent-green' : 'text-accent-red'
-
-  const displayWeight = latest
-    ? settings.unit === 'kg'
-      ? animatedWeight.toFixed(1).replace('.', ',')
-      : animatedWeight.toFixed(1)
-    : '—'
+  const displayWeight = latest ? formatWeight(animatedWeight) : '—'
 
   return (
     <section className="space-y-4">
       <header className="animate-fade-up flex items-start justify-between">
         <div>
-          <h1 className="text-[20px] font-black leading-tight tracking-tight uppercase neon-text-cyan">
-            Weight
+          <h1 className="text-[20px] font-black leading-tight tracking-tight neon-text-cyan">
+            Mon poids
           </h1>
           <p className="mt-0.5 text-[12px] capitalize text-text-tertiary font-medium tracking-wide">{formatDateLong()}</p>
         </div>
@@ -96,14 +86,14 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
 
         {/* Inline stat row */}
         {latest ? (
-          <div className="mt-5 flex items-center border-t pt-4" style={{ borderColor: 'rgba(0,229,255,0.1)' }}>
-            <div className="stat-row-item" style={{ borderRight: '1px solid rgba(0,229,255,0.1)' }}>
+          <div className="mt-5 flex items-center border-t pt-4" style={{ borderColor: 'color-mix(in srgb, var(--color-accent-blue) 10%, transparent)' }}>
+            <div className="stat-row-item" style={{ borderRight: '1px solid color-mix(in srgb, var(--color-accent-blue) 10%, transparent)' }}>
               <span className={`stat-row-value ${bmi ? 'neon-text-cyan' : 'text-text-tertiary'}`}>
                 {bmi ? bmi.toFixed(1).replace('.', ',') : '—'}
               </span>
               <span className="stat-row-label">IMC</span>
             </div>
-            <div className="stat-row-item" style={{ borderRight: '1px solid rgba(0,229,255,0.1)' }}>
+            <div className="stat-row-item" style={{ borderRight: '1px solid color-mix(in srgb, var(--color-accent-blue) 10%, transparent)' }}>
               <span className={`stat-row-value ${monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'neon-text-green' : 'neon-text-red'}`}>
                 {monthVarLabel}
               </span>
@@ -133,19 +123,26 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
         <>
           <ProgressRing
             startWeight={startWeight}
-            startDate={firstEntry?.date}
+            startDate={challengeStart?.startDate}
             currentWeight={latest.weight}
             targetWeight={settings.targetWeight}
             unit={settings.unit}
-            entriesCount={entries.length}
+            entriesCount={settings.challengeStartDate ? challengeEntries.length + 1 : entries.length}
           />
 
           <div className="card-base animate-fade-up animate-stagger-3">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-medium text-text-primary">Évolution du poids</p>
+              <div>
+                <p className="text-sm font-medium text-text-primary">Évolution du poids</p>
+                {settings.challengeStartDate ? (
+                  <p className="mt-0.5 text-[11px] text-text-tertiary">
+                    Depuis le {formatDateShort(settings.challengeStartDate)}
+                  </p>
+                ) : null}
+              </div>
               {weightPlan ? (
                 <p className="text-[12px] neon-text-purple">
-                  {formatPace(weightPlan.weeklyPace)}
+                  {formatPace(weightPlan.weeklyPace, settings.unit)}
                 </p>
               ) : (
                         <button
@@ -164,6 +161,22 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
               unit={settings.unit}
               plan={weightPlan}
             />
+            <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[12px] text-text-secondary" aria-label="Légende du graphique">
+              <li className="flex items-center gap-1.5">
+                <span className="h-0.5 w-4 rounded-full bg-weight" aria-hidden="true" />
+                Poids
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="h-0.5 w-4 rounded-full bg-avg" aria-hidden="true" />
+                Moyenne 7 j
+              </li>
+              {weightPlan ? (
+                <li className="flex items-center gap-1.5">
+                  <span className="h-0.5 w-4 rounded-full bg-plan" aria-hidden="true" />
+                  Plan
+                </li>
+              ) : null}
+            </ul>
           </div>
 
           <ProgressCompare photosByDate={photosByDate} entries={entries} unit={settings.unit} />
