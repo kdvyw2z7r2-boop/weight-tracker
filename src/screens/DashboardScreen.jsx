@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import GlassCard from '../components/ui/GlassCard'
 import ProgressRing from '../components/ProgressRing'
 import WeightChart from '../components/WeightChart'
+import WeeklyReviewCard from '../components/review/WeeklyReviewCard'
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
 import { getChallengeEntries, resolveChallengeStart } from '../utils/challenge'
 import { formatDateLong, formatDateShort } from '../utils/locale'
@@ -13,7 +14,7 @@ import {
 import { computeWeightPlan, resolvePlanAnchor } from '../utils/weightPlan'
 import { formatPace, formatWeight, formatWeightWithUnit } from '../utils/format'
 
-function DashboardScreen({ entries, settings, movingAverage, onEditPlan }) {
+function DashboardScreen({ entries, settings, movingAverage, onEditPlan, reviewData = null }) {
   const latest = entries[0]
   const previous = entries[1]
   const delta = latest && previous ? latest.weight - previous.weight : null
@@ -78,6 +79,9 @@ function DashboardScreen({ entries, settings, movingAverage, onEditPlan }) {
           </div>
         ) : null}
       </GlassCard>
+
+      {/* Bilan hebdo */}
+      {latest && reviewData ? <WeeklyReviewCard entries={entries} settings={settings} {...reviewData} /> : null}
 
       {latest ? (
         <div className="animate-fade-up animate-stagger-2 grid grid-cols-3 gap-2">

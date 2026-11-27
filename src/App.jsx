@@ -322,6 +322,7 @@ function App() {
             movingAverage={sync.getMovingAverage(7)}
             onAdd={() => openAddModal()}
             onEditPlan={openPlanModal}
+            reviewData={{ photosByDate: sync.photosByDate, measurements: sync.measurements, badges, userId }}
           />
         )
     }
@@ -345,6 +346,7 @@ function App() {
     isRefreshingUrls,
     refreshPhotoUrls,
     badges,
+    userId,
   ])
 
   if (sync.isLoading || !sync.hasLoaded) {
