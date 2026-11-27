@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { createSupabaseClient, isSupabaseConfigured, PHOTO_BUCKET } from '../lib/supabase'
 import { createSignedPhotoUrl, photoStoragePath } from '../utils/photo'
+import { listMeasurements, normalizeMeasurement } from '../utils/measurements'
 import { convertSettingsUnit, convertWeightValue } from '../utils/units'
 import {
   defaultSettings,
@@ -12,10 +13,12 @@ import {
   normalizeSettings,
   pruneMarkers,
   sameTombstones,
+  settingsForImport,
   sortByDateDesc,
   updateSyncMarkers,
 } from '../utils/syncMerge'
 import { createSaveQueue } from '../utils/saveQueue'
+import { createSingleFlight } from '../utils/singleFlight'
 
 const API_ENDPOINT = '/api/sync'
 const LEGACY_ENTRIES_KEY = 'wt_entries'
@@ -373,6 +376,9 @@ function useSync(userId) {
   const [entries, setEntries] = useState([])
   const [settings, setSettings] = useState(defaultSettings)
   const [photosByDate, setPhotosByDate] = useState({})
+  // Source de vérité synchrone des photos : mise à jour en même temps que l'état (pas d'effet),
+  // pour que deux opérations enchaînées (envoi puis persist) ne repartent pas d'une table périmée.
+  const photosRef = useRef(photosByDate)
   const [isLoading, setIsLoading] = useState(Boolean(userId))
   const [hasLoaded, setHasLoaded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -507,6 +513,7 @@ function useSync(userId) {
 
         setEntries(mergedEntries)
         setSettings(finalSettings)
+        photosRef.current = mergedPhotos
         setPhotosByDate(mergedPhotos)
         setStorageMode(db ? 'supabase' : 'cloud')
         setSyncStatus('cloud')
@@ -518,6 +525,7 @@ function useSync(userId) {
         storeLocalPhotos(userId, fallback.photos)
         setEntries(fallback.entries)
         setSettings(fallback.settings)
+        photosRef.current = fallback.photos
         setPhotosByDate(fallback.photos)
         setStorageMode('local')
         setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
@@ -555,8 +563,20 @@ function useSync(userId) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [userId, loadData])
 
+  /** Applique une table de photos : ref (synchrone) + état + cache local. */
+  const commitPhotos = useCallback(
+    (next) => {
+      const normalized = normalizePhotosMap(next)
+      photosRef.current = normalized
+      setPhotosByDate(normalized)
+      if (userId) storeLocalPhotos(userId, normalized)
+      return normalized
+    },
+    [userId],
+  )
+
   const persist = useCallback(
-    async (nextEntries, nextSettings, nextPhotos = photosByDate, { restoreAdded = false } = {}) => {
+    async (nextEntries, nextSettings, nextPhotos, { restoreAdded = false } = {}) => {
       if (!userId) {
         setStorageMode('local')
         setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
@@ -566,19 +586,24 @@ function useSync(userId) {
       const now = Date.now()
       const sortedEntries = normalizeEntries(nextEntries)
       const baseSettings = normalizeSettings(nextSettings)
-      const normalizedSettings = pruneMarkers(
-        { ...baseSettings, ...updateSyncMarkers(baseSettings, entries, sortedEntries, now, { restoreAdded }) },
+      const entryMarkers = updateSyncMarkers(baseSettings, entries, sortedEntries, now, { restoreAdded })
+      // Mensurations : mêmes marqueurs (ids UUID uniques), diff des relevés retirés / ré-ajoutés.
+      const markers = updateSyncMarkers(
+        entryMarkers,
+        Object.values(normalizeSettings(settings).measurements),
+        Object.values(baseSettings.measurements),
         now,
+        { restoreAdded },
       )
-      const normalizedPhotos = normalizePhotosMap(nextPhotos)
+      const normalizedSettings = pruneMarkers({ ...baseSettings, ...markers }, now)
       const seq = ++persistSeqRef.current
 
       setEntries(sortedEntries)
       setSettings(normalizedSettings)
-      setPhotosByDate(normalizedPhotos)
+      // Sans table explicite : la table courante (ref), jamais celle capturée par la closure.
+      commitPhotos(nextPhotos ?? photosRef.current)
       storeLocalEntries(userId, sortedEntries)
       storeLocalSettings(userId, normalizedSettings)
-      storeLocalPhotos(userId, normalizedPhotos)
       beginSave()
       setError('')
 
@@ -600,7 +625,7 @@ function useSync(userId) {
         endSave()
       }
     },
-    [userId, db, photosByDate, entries, saveMerged, applyMerged, beginSave, endSave],
+    [userId, db, entries, settings, saveMerged, applyMerged, beginSave, endSave, commitPhotos],
   )
 
   const uploadDailyPhoto = useCallback(
@@ -616,13 +641,7 @@ function useSync(userId) {
 
       try {
         const uploaded = await uploadPhotoToSupabase(db, userId, date, blob)
-        const nextPhotos = {
-          ...photosByDate,
-          [date]: uploaded,
-        }
-
-        setPhotosByDate(nextPhotos)
-        storeLocalPhotos(userId, nextPhotos)
+        commitPhotos({ ...photosRef.current, [date]: uploaded })
         setStorageMode('supabase')
         return uploaded
       } catch (uploadError) {
@@ -634,14 +653,14 @@ function useSync(userId) {
         setIsSaving(false)
       }
     },
-    [userId, db, photosByDate],
+    [userId, db, commitPhotos],
   )
 
   const deleteDailyPhoto = useCallback(
     async (date) => {
       if (!userId || !date) return
 
-      const existing = photosByDate[date]
+      const existing = photosRef.current[date]
       if (!existing) return
 
       if (!db) {
@@ -653,10 +672,9 @@ function useSync(userId) {
 
       try {
         await deletePhotoFromSupabase(db, userId, date, existing.storagePath)
-        const nextPhotos = { ...photosByDate }
+        const nextPhotos = { ...photosRef.current }
         delete nextPhotos[date]
-        setPhotosByDate(nextPhotos)
-        storeLocalPhotos(userId, nextPhotos)
+        commitPhotos(nextPhotos)
         setStorageMode('supabase')
       } catch (deleteError) {
         setStorageMode('local')
@@ -666,25 +684,23 @@ function useSync(userId) {
         setIsSaving(false)
       }
     },
-    [userId, db, photosByDate],
+    [userId, db, commitPhotos],
   )
 
   const addEntry = useCallback(
     async (entry, photoBlobArg = null) => {
       const photoBlob = photoBlobArg ?? entry.photoBlob ?? null
-      const photoRequired = Boolean(db)
 
-      if (photoRequired && !photoBlob && !photosByDate[entry.date]?.storagePath) {
-        throw new Error('Une photo est obligatoire pour enregistrer la pesée.')
-      }
-
+      let nextPhotos
       if (photoBlob) {
-        await uploadDailyPhoto(entry.date, photoBlob)
+        const uploaded = await uploadDailyPhoto(entry.date, photoBlob)
+        // Table incluant la photo envoyée, passée explicitement (pas de table périmée).
+        nextPhotos = uploaded ? { ...photosRef.current, [entry.date]: uploaded } : undefined
       }
 
-      await persist([...entries, createEntry(entry)], settings)
+      await persist([...entries, createEntry(entry)], settings, nextPhotos)
     },
-    [entries, settings, persist, uploadDailyPhoto, photosByDate, db],
+    [entries, settings, persist, uploadDailyPhoto],
   )
 
   const updateEntry = useCallback(
@@ -716,13 +732,45 @@ function useSync(userId) {
     [entries, settings, persist],
   )
 
+  // --- Mensurations (settings.measurements) ---
+  const measurements = useMemo(() => listMeasurements(settings.measurements), [settings.measurements])
+
+  /** Crée (sans id) ou modifie un relevé ; renvoie le relevé enregistré. */
+  const saveMeasurement = useCallback(
+    async (data) => {
+      const record = normalizeMeasurement({
+        ...data,
+        id: data.id ?? crypto.randomUUID(),
+        date: data.date ?? format(new Date(), 'yyyy-MM-dd'),
+        updatedAt: Date.now(),
+      })
+      if (!record) throw new Error('Relevé invalide')
+      await persist(entries, { ...settings, measurements: { ...settings.measurements, [record.id]: record } })
+      return record
+    },
+    [entries, settings, persist],
+  )
+
+  const deleteMeasurements = useCallback(
+    async (ids) => {
+      const toRemove = new Set(ids)
+      const next = Object.fromEntries(
+        Object.entries(settings.measurements ?? {}).filter(([id]) => !toRemove.has(id)),
+      )
+      await persist(entries, { ...settings, measurements: next })
+    },
+    [entries, settings, persist],
+  )
+
+  const deleteMeasurement = useCallback((id) => deleteMeasurements([id]), [deleteMeasurements])
+
   const clearAllData = useCallback(async () => {
-    if (db && Object.keys(photosByDate).length) {
-      await deleteAllPhotosFromSupabase(db, userId, photosByDate)
+    const currentPhotos = photosRef.current
+    if (db && Object.keys(currentPhotos).length) {
+      await deleteAllPhotosFromSupabase(db, userId, currentPhotos)
     }
 
-    setPhotosByDate({})
-    storeLocalPhotos(userId, {})
+    commitPhotos({})
     // Réglages par défaut, mais on garde les marqueurs de synchro (sinon les suppressions seraient perdues).
     await persist(
       [],
@@ -733,7 +781,7 @@ function useSync(userId) {
     // La clé des réglages est conservée : elle porte les tombstones jusqu'à leur synchro.
     removeFromStorage(getLocalEntriesKey(userId))
     removeFromStorage(getLocalPhotosKey(userId))
-  }, [persist, photosByDate, userId, db, settings])
+  }, [persist, userId, db, settings, commitPhotos])
 
   const clearEntries = useCallback(async () => {
     await clearAllData()
@@ -755,6 +803,26 @@ function useSync(userId) {
     (date) => Boolean(photosByDate[date]?.storagePath),
     [photosByDate],
   )
+
+  // Re-signe les URLs des photos (sans écran de chargement). Appels concurrents mutualisés ;
+  // résout avec la table à jour, utilisable immédiatement (sans attendre le rendu).
+  const refreshFlightRef = useRef(null)
+  useEffect(() => {
+    refreshFlightRef.current = createSingleFlight(async () => {
+      const current = photosRef.current
+      if (!db) return current
+      const fresh = Object.fromEntries(Object.entries(current).map(([date, photo]) => [date, { ...photo }]))
+      await hydratePhotoUrls(db, fresh)
+      const merged = Object.fromEntries(
+        Object.entries(photosRef.current).map(([date, photo]) => [
+          date,
+          fresh[date]?.storagePath === photo.storagePath && fresh[date].url ? { ...photo, url: fresh[date].url } : photo,
+        ]),
+      )
+      return commitPhotos(merged)
+    })
+  }, [db, commitPhotos])
+  const refreshPhotoUrls = useCallback(() => refreshFlightRef.current(), [])
 
   const getPhotoForDate = useCallback((date) => photosByDate[date] ?? null, [photosByDate])
 
@@ -788,13 +856,13 @@ function useSync(userId) {
       if (!Array.isArray(parsed.entries)) {
         throw new Error('Invalid backup format')
       }
-      const nextSettings = parsed.settings ? mergeSettings(settings, parsed.settings) : settings
-      const nextPhotos = parsed.photosByDate ? normalizePhotosMap(parsed.photosByDate) : photosByDate
-      // restoreAdded : les ids importés absents d'ici sont restaurés, même si leur tombstone n'est que dans le cloud.
+      const nextSettings = parsed.settings ? settingsForImport(settings, parsed.settings) : settings
+      const nextPhotos = parsed.photosByDate ? normalizePhotosMap(parsed.photosByDate) : undefined
+      // restoreAdded : les ids importés (pesées et mensurations) absents d'ici sont restaurés, même si leur tombstone n'est que dans le cloud.
       await persist(mergeEntries([], normalizeEntries(parsed.entries)), nextSettings, nextPhotos, { restoreAdded: true })
       return parsed
     },
-    [persist, settings, photosByDate],
+    [persist, settings],
   )
 
   const convertAllUnits = useCallback(
@@ -820,6 +888,7 @@ function useSync(userId) {
       error,
       isSupabaseConfigured,
       reload: loadData,
+      refreshPhotoUrls,
       addEntry,
       updateEntry,
       deleteEntry,
@@ -836,6 +905,10 @@ function useSync(userId) {
       exportJSON,
       importJSON,
       convertAllUnits,
+      measurements,
+      saveMeasurement,
+      deleteMeasurement,
+      deleteMeasurements,
     }),
     [
       entries,
@@ -849,6 +922,7 @@ function useSync(userId) {
       syncStatus,
       error,
       loadData,
+      refreshPhotoUrls,
       addEntry,
       updateEntry,
       deleteEntry,
@@ -865,6 +939,10 @@ function useSync(userId) {
       exportJSON,
       importJSON,
       convertAllUnits,
+      measurements,
+      saveMeasurement,
+      deleteMeasurement,
+      deleteMeasurements,
     ],
   )
 }

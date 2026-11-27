@@ -1,3 +1,4 @@
+import GlassCard from './ui/GlassCard'
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
 import { formatDateShort } from '../utils/locale'
 import { formatWeight, formatWeightWithUnit } from '../utils/format'
@@ -19,10 +20,10 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
   const displayPercent = Math.round(animatedProgress)
 
   return (
-    <div className="card-base card-glow animate-fade-up animate-stagger-2 flex items-center justify-between gap-2">
-      <div className="min-w-0 flex-1 text-[13px] leading-snug text-text-tertiary">
-        <p className="section-label !normal-case !tracking-normal !text-[11px]">Départ</p>
-        <p className="mt-1.5 text-[15px] font-medium text-text-primary">
+    <GlassCard className="animate-fade-up animate-stagger-2 flex items-center justify-between gap-2 px-4 py-5">
+      <div className="min-w-0 flex-1 text-[13px] leading-snug text-text-secondary">
+        <p className="section-label !text-[12px]">Départ</p>
+        <p className="mt-1.5 text-[16px] font-semibold text-text-primary">
           {formatWeightWithUnit(startWeight, unit)}
         </p>
         {startDate ? <p className="mt-0.5 text-[12px]">{formatDateShort(startDate)}</p> : null}
@@ -38,22 +39,13 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
             cx={radius}
             cy={radius}
           />
-          <defs>
-            <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="var(--color-accent-blue)" />
-              <stop offset="100%" stopColor="var(--color-accent-purple)" />
-            </linearGradient>
-          </defs>
           <circle
-            stroke={isPositiveProgress ? 'url(#ring-gradient)' : C.track}
+            stroke={isPositiveProgress ? 'var(--color-accent)' : C.track}
             fill="transparent"
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${circumference} ${circumference}`}
-            style={{
-              strokeDashoffset,
-              filter: isPositiveProgress ? 'drop-shadow(0 0 8px color-mix(in srgb, var(--color-accent-blue) 60%, transparent))' : undefined,
-            }}
+            style={{ strokeDashoffset }}
             r={normalizedRadius}
             cx={radius}
             cy={radius}
@@ -61,25 +53,25 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <p
-            className={`text-3xl font-black leading-none tabular-nums ${
-              isPositiveProgress ? 'neon-text-cyan' : 'text-white'
+            className={`text-[32px] font-light leading-none tracking-[-0.03em] tabular-nums ${
+              isPositiveProgress ? 'text-accent-text' : 'text-text-primary'
             }`}
           >
             {displayPercent}%
           </p>
-          <p className="mt-1 max-w-[90px] text-[12px] leading-tight text-text-tertiary">
+          <p className="mt-1 max-w-[90px] text-[12px] leading-tight text-text-secondary">
             {hasEnoughEntries ? `${formatWeight(currentWeight)} / ${formatWeight(targetWeight)}` : 'Début du suivi'}
           </p>
         </div>
       </div>
 
-      <div className="min-w-0 flex-1 text-right text-[13px] leading-snug text-text-tertiary">
-        <p className="section-label !normal-case !tracking-normal !text-[11px]">Objectif</p>
-        <p className="mt-1.5 text-[15px] font-medium text-text-primary">
+      <div className="min-w-0 flex-1 text-right text-[13px] leading-snug text-text-secondary">
+        <p className="section-label !text-[12px]">Objectif</p>
+        <p className="mt-1.5 text-[16px] font-semibold text-text-primary">
           {formatWeightWithUnit(targetWeight, unit)}
         </p>
       </div>
-    </div>
+    </GlassCard>
   )
 }
 

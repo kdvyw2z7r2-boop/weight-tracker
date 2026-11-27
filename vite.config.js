@@ -1,5 +1,6 @@
 import process from 'node:process'
 import { defineConfig } from 'vite'
+import { configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -15,8 +16,8 @@ export default defineConfig({
         name: 'Suivi de poids',
         short_name: 'Poids',
         description: 'Suivi de poids personnel',
-        theme_color: '#0A0A0A',
-        background_color: '#0A0A0A',
+        theme_color: '#0c0907',
+        background_color: '#0c0907',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
@@ -31,4 +32,8 @@ export default defineConfig({
       },
     }),
   ],
+  test: {
+    // Worktrees d'agents parallèles (.claude/worktrees) hors du périmètre de test.
+    exclude: [...configDefaults.exclude, '.claude/**'],
+  },
 })

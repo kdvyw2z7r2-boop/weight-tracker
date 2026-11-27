@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useDialogLayer } from '../hooks/dialogStack'
 
 function ConfirmSheet({
   open,
@@ -21,13 +23,11 @@ function ConfirmSheet({
       returnFocusRef.current = document.activeElement
       // eslint-disable-next-line react-hooks/set-state-in-effect -- modal mount animation
       setRender(true)
-      document.body.style.overflow = 'hidden'
       const frame = requestAnimationFrame(() => {
         requestAnimationFrame(() => setVisible(true))
       })
       return () => {
         cancelAnimationFrame(frame)
-        document.body.style.overflow = ''
       }
     }
     setVisible(false)
@@ -42,21 +42,15 @@ function ConfirmSheet({
     if (open && visible) cancelRef.current?.focus()
   }, [open, visible])
 
-  useEffect(() => {
-    if (!open) return undefined
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') onCancel()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onCancel])
+  useDialogLayer(open, { onEscape: onCancel })
 
   if (!render) return null
 
   const confirmClass =
-    tone === 'danger' ? 'bg-accent-red text-white' : 'bg-accent-green text-bg-primary'
+    tone === 'danger' ? 'rounded-full bg-danger font-semibold text-bg-primary' : 'btn-primary'
 
-  return (
+  // Portail : toujours au-dessus de la barre d'onglets, quel que soit l'écran appelant.
+  return createPortal(
     <div
       className={`fixed inset-0 z-40 flex items-end justify-center sm:items-center ${
         open ? '' : 'pointer-events-none'
@@ -68,7 +62,7 @@ function ConfirmSheet({
         tabIndex={-1}
         aria-label="Fermer"
         onClick={onCancel}
-        className={`absolute inset-0 bg-black/75 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${
           visible ? 'opacity-100' : 'opacity-0'
         }`}
       />
@@ -77,16 +71,16 @@ function ConfirmSheet({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={message ? messageId : undefined}
-        className={`relative w-full max-w-md rounded-t-[24px] border-t border-border bg-bg-card px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.5)] transition-all duration-300 sm:rounded-[24px] sm:border ${
+        className={`glass-strong relative w-full max-w-md !rounded-b-none px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 transition-[opacity,translate] duration-300 sm:!rounded-b-[28px] ${
           visible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
         }`}
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-bg-elevated sm:hidden" aria-hidden="true" />
-        <h2 id={titleId} className="text-lg font-semibold text-white">
+        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/30 sm:hidden" aria-hidden="true" />
+        <h2 id={titleId} className="text-center text-[17px] font-semibold text-text-primary">
           {title}
         </h2>
         {message ? (
-          <p id={messageId} className="mt-2 text-[14px] leading-relaxed text-text-secondary">
+          <p id={messageId} className="mt-2 text-center text-[14px] leading-relaxed text-text-secondary">
             {message}
           </p>
         ) : null}
@@ -94,7 +88,7 @@ function ConfirmSheet({
           <button
             type="button"
             onClick={onConfirm}
-            className={`press-button h-12 w-full rounded-[14px] text-[15px] font-semibold ${confirmClass}`}
+            className={`press-button h-12 w-full text-[15px] ${confirmClass}`}
           >
             {confirmLabel}
           </button>
@@ -102,13 +96,14 @@ function ConfirmSheet({
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            className="press-button h-12 w-full rounded-[14px] bg-bg-elevated text-[15px] font-medium text-text-primary"
+            className="press-button h-12 w-full rounded-full border border-white/15 bg-white/8 text-[15px] font-semibold text-text-primary"
           >
             Annuler
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

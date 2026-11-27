@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import useDialogBasics from '../hooks/useDialogBasics'
 
 const IOS_STEPS = [
   "Appuie sur le bouton Partager (l'icône carrée avec une flèche vers le haut en bas de l'écran).",
@@ -33,19 +35,19 @@ function PhoneIcon() {
 
 function TutorialSteps({ title, steps, note }) {
   return (
-    <div className="rounded-2xl border border-border bg-bg-elevated/70 p-4">
+    <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
       <p className="text-sm font-semibold text-text-primary">{title}</p>
       <ol className="mt-3 space-y-3">
         {steps.map((step, index) => (
           <li key={step} className="flex gap-3 text-[14px] leading-relaxed text-text-secondary">
-            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-black">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-bg-primary">
               {index + 1}
             </span>
             <span>{step}</span>
           </li>
         ))}
       </ol>
-      {note ? <p className="mt-4 text-[13px] leading-relaxed text-text-tertiary">{note}</p> : null}
+      {note ? <p className="mt-4 text-[13px] leading-relaxed text-text-secondary">{note}</p> : null}
     </div>
   )
 }
@@ -56,17 +58,11 @@ function InstallAppTutorial({ leading = null }) {
   const showIOS = deviceType === 'ios' || deviceType === 'other'
   const showAndroid = deviceType === 'android' || deviceType === 'other'
 
-  useEffect(() => {
-    if (!isOpen) {
-      document.body.style.overflow = ''
-      return undefined
-    }
-
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
+  const sheetRef = useRef(null)
+  const closeRef = useRef(null)
+  const titleId = useId()
+  const close = useCallback(() => setIsOpen(false), [])
+  useDialogBasics({ open: isOpen, onClose: close, containerRef: sheetRef, initialFocusRef: closeRef })
 
   return (
     <>
@@ -75,38 +71,47 @@ function InstallAppTutorial({ leading = null }) {
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="press-button ml-auto flex h-9 shrink-0 items-center gap-2 rounded-full border border-border bg-bg-card/80 px-3 text-[12px] font-medium text-text-secondary shadow-sm backdrop-blur transition hover:text-text-primary"
+          className="press-button glass-pill ml-auto flex h-11 shrink-0 items-center gap-2 px-4 text-[13px] font-medium text-text-secondary transition hover:text-text-primary"
         >
           <PhoneIcon />
           Installer l&apos;app
         </button>
       </div>
 
-      {isOpen ? (
-        <div className="fixed inset-0 z-40 flex items-end justify-center" role="dialog" aria-modal="true">
+      {/* Portail : au-dessus de la barre d'onglets (hors du contexte d'empilement de <main>). */}
+      {isOpen ? createPortal(
+        <div className="fixed inset-0 z-40 flex items-end justify-center">
           <button
             type="button"
+            tabIndex={-1}
             aria-label="Fermer le tutoriel"
-            onClick={() => setIsOpen(false)}
-            className="animate-modal-overlay absolute inset-0 bg-black/75 backdrop-blur-sm"
+            onClick={close}
+            className="animate-modal-overlay absolute inset-0 bg-black/60"
           />
-          <div className="animate-modal-sheet relative w-full max-w-md rounded-t-[24px] border-t border-border bg-bg-card px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.5)]">
-            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-bg-elevated" aria-hidden="true" />
+          <div
+            ref={sheetRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            className="glass-strong animate-modal-sheet relative w-full max-w-md !rounded-b-none px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3"
+          >
+            <div className="mx-auto mb-5 h-1.5 w-10 rounded-full bg-white/30" aria-hidden="true" />
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="section-label">Widget / PWA</p>
-                <h2 className="mt-1 text-lg font-semibold">Ajouter à l&apos;écran d&apos;accueil</h2>
-                <p className="mt-2 text-[13px] leading-relaxed text-text-tertiary">
+                <h2 id={titleId} className="mt-1 text-[20px] font-semibold tracking-[-0.01em] text-text-primary">Ajouter à l&apos;écran d&apos;accueil</h2>
+                <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
                   Installe l&apos;app sur ton téléphone pour l&apos;ouvrir comme une application, avec ton lien unique déjà configuré.
                 </p>
               </div>
               <button
+                ref={closeRef}
                 type="button"
-                onClick={() => setIsOpen(false)}
-                className="press-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg-elevated text-text-secondary"
+                onClick={close}
+                className="press-button glass-icon-btn shrink-0 text-[18px]"
                 aria-label="Fermer"
               >
-                x
+                ✕
               </button>
             </div>
 
@@ -123,7 +128,8 @@ function InstallAppTutorial({ leading = null }) {
               ) : null}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </>
   )

@@ -8,7 +8,9 @@ import {
   normalizeSettings,
   mergeForLoad,
   mergeForSave,
+  mergeMeasurements,
   pruneTombstones,
+  settingsForImport,
   updateSyncMarkers,
 } from './syncMerge'
 
@@ -316,5 +318,90 @@ describe('updateSyncMarkers — import (restoreAdded)', () => {
   it('n\'ajoute rien pour les ids déjà présents', () => {
     const list = [e('a', '2026-11-01')]
     expect(updateSyncMarkers({}, list, list, NOW, { restoreAdded: true }).restoredEntries).toEqual({})
+  })
+})
+
+describe('mensurations (settings.measurements)', () => {
+  const r = (id, date, waist, updatedAt) => ({ id, date, waist, updatedAt })
+
+  it('normalizeSettings : measurements par défaut {} et relevés invalides ignorés', () => {
+    expect(normalizeSettings(null).measurements).toEqual({})
+    const s = normalizeSettings({ measurements: { a: r('a', '2026-11-01', 90, 1), b: { id: 'b' }, c: 'x' } })
+    expect(Object.keys(s.measurements)).toEqual(['a'])
+  })
+
+  it('mergeMeasurements : union par id, updatedAt max gagne', () => {
+    const a = { x: r('x', '2026-11-01', 90, 10), y: r('y', '2026-11-02', 89, 5) }
+    const b = { x: r('x', '2026-11-01', 88, 20), z: r('z', '2026-11-03', 87, 1) }
+    const merged = mergeMeasurements(a, b)
+    expect(Object.keys(merged).sort()).toEqual(['x', 'y', 'z'])
+    expect(merged.x.waist).toBe(88)
+    expect(mergeMeasurements(b, a).x.waist).toBe(88)
+  })
+
+  it('mergeMeasurements : exclut les ids marqués supprimés', () => {
+    const merged = mergeMeasurements({ x: r('x', '2026-11-01', 90, 10) }, {}, { x: NOW }, {})
+    expect(merged).toEqual({})
+  })
+
+  it('deux appareils ajoutent chacun un relevé hors ligne → les deux survivent (save puis load)', () => {
+    const cloud = { entries: [], settings: { ...defaultSettings, measurements: { a: r('a', '2026-11-01', 90, 1) } } }
+    const local = { entries: [], settings: { ...defaultSettings, measurements: { b: r('b', '2026-11-02', 89, 2) } } }
+    const saved = mergeForSave(local, cloud, NOW)
+    expect(Object.keys(saved.settings.measurements).sort()).toEqual(['a', 'b'])
+    const loaded = mergeForLoad(local, cloud, { now: NOW })
+    expect(Object.keys(loaded.settings.measurements).sort()).toEqual(['a', 'b'])
+    expect(Object.keys(mergeSettings(local.settings, cloud.settings, NOW).measurements).sort()).toEqual(['a', 'b'])
+  })
+
+  it('modification concurrente → updatedAt max gagne, au chargement comme à la sauvegarde', () => {
+    const cloud = { entries: [], settings: { measurements: { a: r('a', '2026-11-01', 90, 50) } } }
+    const local = { entries: [], settings: { measurements: { a: r('a', '2026-11-01', 85, 10) } } }
+    expect(mergeForSave(local, cloud, NOW).settings.measurements.a.waist).toBe(90)
+    expect(mergeForLoad(local, cloud, { now: NOW }).settings.measurements.a.waist).toBe(90)
+  })
+
+  it('relevé supprimé sur A (marqueur) → exclu sur B après fusion', () => {
+    // A a supprimé « a » et sauvegardé : le cloud porte le marqueur, plus le relevé.
+    const cloud = { entries: [], settings: { measurements: {}, deletedEntries: { a: NOW - DAY } } }
+    // B a encore « a » en local.
+    const local = { entries: [], settings: { measurements: { a: r('a', '2026-11-01', 90, 1) } } }
+    expect(mergeForLoad(local, cloud, { now: NOW }).settings.measurements).toEqual({})
+    expect(mergeForLoad(local, cloud, { hasUnsynced: true, now: NOW }).settings.measurements).toEqual({})
+    expect(mergeForSave(local, cloud, NOW).settings.measurements).toEqual({})
+  })
+
+  it('updateSyncMarkers sur les relevés : retrait → marqueur deletedAt', () => {
+    const markers = updateSyncMarkers({}, [{ id: 'a' }], [], NOW)
+    expect(markers.deletedEntries).toEqual({ a: NOW })
+  })
+
+  it('ordre des clés stable (pas de re-sauvegarde inutile)', () => {
+    const a = normalizeSettings({ measurements: { b: r('b', '2026-11-02', 1, 1), a: r('a', '2026-11-01', 1, 1) } })
+    const b = normalizeSettings({ measurements: { a: r('a', '2026-11-01', 1, 1), b: r('b', '2026-11-02', 1, 1) } })
+    expect(JSON.stringify(a.measurements)).toBe(JSON.stringify(b.measurements))
+  })
+})
+
+describe('settingsForImport (restauration d’une sauvegarde JSON)', () => {
+  const r = (id, date, waist, updatedAt) => ({ id, date, waist, updatedAt })
+  const now = 1_800_000_000_000
+
+  it('restaure les mensurations de la sauvegarde même si elles ont été supprimées ici depuis', () => {
+    const current = { measurements: { b: r('b', '2026-11-20', 85, 5) }, deletedEntries: { a: now - 1000 } }
+    const backup = { measurements: { a: r('a', '2026-11-01', 90, 1) } }
+    const next = settingsForImport(current, backup, now)
+    expect(Object.keys(next.measurements)).toEqual(['a'])
+    // Avec les marqueurs de restauration (persist restoreAdded), « a » survit à la fusion de sauvegarde.
+    const markers = updateSyncMarkers(next, Object.values(current.measurements), Object.values(next.measurements), now, {
+      restoreAdded: true,
+    })
+    const saved = mergeForSave({ entries: [], settings: { ...next, ...markers } }, { entries: [], settings: current }, now)
+    expect(Object.keys(saved.settings.measurements)).toEqual(['a'])
+  })
+
+  it('sauvegarde sans mensurations : les mensurations actuelles sont gardées', () => {
+    const current = { measurements: { b: r('b', '2026-11-20', 85, 5) } }
+    expect(Object.keys(settingsForImport(current, { unit: 'kg' }, now).measurements)).toEqual(['b'])
   })
 })

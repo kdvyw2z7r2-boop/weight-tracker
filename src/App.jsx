@@ -1,19 +1,29 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import BottomNav from './BottomNav'
 import AddWeightModal from './components/AddWeightModal'
 import InstallAppTutorial from './components/InstallAppTutorial'
 import PageTransition from './components/PageTransition'
-import PhotoActionSheet from './components/PhotoActionSheet'
-import PhotoCompareModal from './components/PhotoCompareModal'
 import PhotoViewerModal from './components/PhotoViewerModal'
+import AddPhotoFlow from './components/photos/AddPhotoFlow'
+import PhotoTimelapse from './components/photos/PhotoTimelapse'
 import WeightPlanModal from './components/WeightPlanModal'
+import CelebrationSheet from './components/badges/CelebrationSheet'
+import GlassButton from './components/ui/GlassButton'
 import useDailyReminder from './hooks/useDailyReminder'
 import useScrollDirection from './hooks/useScrollDirection'
+import useBadgeCelebration from './hooks/useBadgeCelebration'
+import { useBlockingDialogOpen } from './hooks/dialogStack'
 import useSync from './hooks/useSync'
+import { useToast } from './hooks/useToast'
 import useUserId from './hooks/useUserId'
-import { buildEntryComparePair } from './utils/progressPhotos'
+import { fetchPhotoBlob, PhotoUnavailableError } from './utils/fetchImage'
+import { canInitSeenBadges, computeBadges } from './utils/badges'
+import { formatDateCompact } from './utils/locale'
+import { ghostFor, listPhotos } from './utils/progressPhotos'
+import { buildShareCaption, composeShareImage, makeShareFile, shareOrDownload } from './utils/shareImage'
 import DashboardScreen from './screens/DashboardScreen'
 import LogScreen from './screens/LogScreen'
+import PhotosScreen from './screens/PhotosScreen'
 import ProgressScreen from './screens/ProgressScreen'
 import SettingsScreen from './screens/SettingsScreen'
 
@@ -30,7 +40,7 @@ function SyncStatusPill({ status }) {
       role="status"
       title={title}
       aria-label={`Hors ligne · données locales. ${title}`}
-      className="flex h-7 min-w-0 items-center gap-1.5 rounded-full bg-bg-elevated px-2.5 text-[11px] font-medium text-text-secondary"
+      className="glass-pill flex h-7 min-w-0 items-center gap-1.5 px-2.5 text-[11px] font-medium text-text-secondary"
     >
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
       <span className="truncate">Hors ligne · données locales</span>
@@ -40,20 +50,19 @@ function SyncStatusPill({ status }) {
 
 function LoadingScreen({ error, onRetry }) {
   return (
-    <div className="relative min-h-screen bg-bg-primary text-text-primary">
-      <div className="ambient-glow" aria-hidden="true" />
+    <div className="relative min-h-screen text-text-primary">
       <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-md items-center px-4">
-        <div className="card-base w-full text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-bg-elevated">
+        <div className="glass w-full p-6 text-center">
+          <div className="glass-pill mx-auto flex h-12 w-12 items-center justify-center">
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" aria-hidden="true" />
           </div>
           <h1 className="mt-5 text-lg font-semibold">Chargement…</h1>
           {error ? (
             <>
-              <p className="mt-4 rounded-xl bg-accent-red/10 px-4 py-3 text-sm text-accent-red">{error}</p>
-              <button type="button" onClick={onRetry} className="btn-primary mt-5 h-11 px-6 text-[15px]">
+              <p className="mt-4 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger-text">{error}</p>
+              <GlassButton onClick={onRetry} className="mt-5 px-6">
                 Réessayer
-              </button>
+              </GlassButton>
             </>
           ) : null}
         </div>
@@ -70,10 +79,14 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
   const [planModalDismissed, setPlanModalDismissed] = useState(false)
-  const [photoActionEntry, setPhotoActionEntry] = useState(null)
-  const [photoViewerEntry, setPhotoViewerEntry] = useState(null)
-  const [photoCompareEntry, setPhotoCompareEntry] = useState(null)
+  const [photoViewerItem, setPhotoViewerItem] = useState(null)
+  const [timelapseOpen, setTimelapseOpen] = useState(false)
+  const [photoFlow, setPhotoFlow] = useState(null)
+  const [photoFocusDate, setPhotoFocusDate] = useState(null)
   const [addModalDate, setAddModalDate] = useState(null)
+  const [isSharing, setIsSharing] = useState(false)
+  const [pendingShare, setPendingShare] = useState(null)
+  const { show: showToast } = useToast()
 
   const { settings, updateSettings } = sync
   const latest = sync.entries[0]
@@ -107,39 +120,148 @@ function App() {
     ready: sync.hasLoaded && !sync.isLoading,
   })
 
+  // Badges (calculés) + célébration des nouveaux, une seule fois par appareil.
+  const badges = useMemo(
+    () =>
+      computeBadges({
+        entries: sync.entries,
+        settings,
+        photos: sync.photosByDate,
+        measurements: sync.measurements,
+      }),
+    [sync.entries, settings, sync.photosByDate, sync.measurements],
+  )
+  const blockingDialogOpen = useBlockingDialogOpen()
+  const { toCelebrate, dismiss: dismissCelebration } = useBadgeCelebration({
+    badges,
+    userId,
+    ready: sync.hasLoaded && !sync.isLoading,
+    canInitSeen: canInitSeenBadges(sync.syncStatus),
+  })
+
   const closeAddModal = useCallback(() => {
     setIsModalOpen(false)
     setAddModalDate(null)
   }, [])
 
-  const handlePhotoPress = useCallback((entry) => {
-    setPhotoActionEntry(entry)
+  const changeTab = useCallback((nextTab) => {
+    setTab(nextTab)
+    setPhotoFocusDate(null)
   }, [])
 
-  const closePhotoAction = useCallback(() => {
-    setPhotoActionEntry(null)
-  }, [])
+  const { hasPhotoForDate, deleteDailyPhoto, isSupabaseConfigured } = sync
 
-  const openPhotoViewer = useCallback((entry) => {
-    setPhotoActionEntry(null)
-    setPhotoViewerEntry(entry)
-  }, [])
+  const photos = useMemo(() => listPhotos(sync.photosByDate, sync.entries), [sync.photosByDate, sync.entries])
+  const { refreshPhotoUrls: refreshUrls } = sync
+  const [isRefreshingUrls, setIsRefreshingUrls] = useState(false)
+  // Photo sans URL signée : un seul rafraîchissement (appels concurrents mutualisés dans useSync).
+  const refreshPhotoUrls = useCallback(async () => {
+    setIsRefreshingUrls(true)
+    try {
+      await refreshUrls()
+    } catch {
+      showToast('Impossible de recharger les photos.', { tone: 'error' })
+    } finally {
+      setIsRefreshingUrls(false)
+    }
+  }, [refreshUrls, showToast])
 
-  const closePhotoViewer = useCallback(() => {
-    setPhotoViewerEntry(null)
-  }, [])
+  const finishShare = useCallback(
+    (result) => {
+      if (result === 'needs-gesture') return false
+      if (result === 'downloaded') showToast('Image téléchargée')
+      return true
+    },
+    [showToast],
+  )
 
-  const openPhotoCompare = useCallback((entry) => {
-    setPhotoActionEntry(null)
-    setPhotoViewerEntry(null)
-    setPhotoCompareEntry(entry)
-  }, [])
+  // Verrou synchrone : deux touchers dans la même frame ne composent qu'une image.
+  const sharingRef = useRef(false)
+  const sharePair = useCallback(
+    async (pair, stats) => {
+      if (!pair?.after || sharingRef.current) return
+      sharingRef.current = true
+      const key = `${pair.before.date}|${pair.after.date}`
+      try {
+        // iOS : le partage a été refusé faute de geste frais ; ce toucher partage le fichier déjà composé.
+        if (pendingShare?.key === key) {
+          const result = await shareOrDownload(pendingShare.file)
+          if (finishShare(result)) setPendingShare(null)
+          return
+        }
 
-  const closePhotoCompare = useCallback(() => {
-    setPhotoCompareEntry(null)
-  }, [])
+        setIsSharing(true)
+        // Une seule re-signature, partagée par les deux photos (URL absente ou expirée).
+        let refreshed = null
+        const refresh = () => (refreshed ??= refreshUrls())
+        const [beforeBlob, afterBlob] = await Promise.all([
+          fetchPhotoBlob(pair.before, { refresh }),
+          fetchPhotoBlob(pair.after, { refresh }),
+        ])
+        const blob = await composeShareImage({
+          beforeBlob,
+          afterBlob,
+          beforeLabel: `Avant · ${formatDateCompact(pair.before.date)}`,
+          afterLabel: `Après · ${formatDateCompact(pair.after.date)}`,
+          caption: buildShareCaption(stats, settings.unit),
+        })
+        const file = makeShareFile(blob, pair.after.date)
+        const result = await shareOrDownload(file)
+        if (!finishShare(result)) setPendingShare({ key, file })
+      } catch (shareError) {
+        showToast(
+          shareError instanceof PhotoUnavailableError ? shareError.message : 'Impossible de créer l’image à partager.',
+          { tone: 'error' },
+        )
+      } finally {
+        setIsSharing(false)
+        sharingRef.current = false
+      }
+    },
+    [pendingShare, finishShare, refreshUrls, settings.unit, showToast],
+  )
 
-  const showFab = tab !== 'settings'
+  const ghostUrlForDate = useCallback((date) => ghostFor(photos, date)?.url ?? null, [photos])
+
+  // Ajout / remplacement / recadrage : un seul flux guidé (source -> cadrage avec fantôme -> envoi).
+  const addPhoto = useCallback((date) => {
+    setPhotoFocusDate(date)
+    setPhotoFlow({ date, recropUrl: null })
+  }, [])
+  const replacePhoto = useCallback((date) => setPhotoFlow({ date, recropUrl: null }), [])
+  const recropPhoto = useCallback((item) => {
+    if (item?.url) setPhotoFlow({ date: item.date, recropUrl: item.url })
+  }, [])
+  const closePhotoFlow = useCallback(() => setPhotoFlow(null), [])
+
+  const deletePhoto = useCallback(
+    async (date) => {
+      try {
+        await deleteDailyPhoto(date)
+        showToast('Photo supprimée')
+      } catch (deleteError) {
+        showToast(deleteError.message || 'Impossible de supprimer la photo.', { tone: 'error' })
+      }
+    },
+    [deleteDailyPhoto, showToast],
+  )
+
+  // Journal : ouvre l'onglet Photos sur ce jour ; sans photo, lance l'ajout pour cette date.
+  const handlePhotoPress = useCallback(
+    (entry) => {
+      setTab('photos')
+      setPhotoFocusDate(entry.date)
+      // Sans Supabase, l'onglet affiche l'état explicatif : pas de sélecteur de fichier.
+      if (isSupabaseConfigured && !hasPhotoForDate(entry.date)) setPhotoFlow({ date: entry.date, recropUrl: null })
+    },
+    [hasPhotoForDate, isSupabaseConfigured],
+  )
+
+  // Photos : pas de FAB (il masquerait les vignettes récentes ; l'écran a son propre bouton principal).
+  const showFab = tab !== 'settings' && tab !== 'photos'
+
+  const openTimelapse = useCallback(() => setTimelapseOpen(true), [])
+  const closeTimelapse = useCallback(() => setTimelapseOpen(false), [])
 
   const activeScreen = useMemo(() => {
     switch (tab) {
@@ -153,8 +275,39 @@ function App() {
             hasPhotoForDate={sync.hasPhotoForDate}
           />
         )
+      case 'photos':
+        return (
+          <PhotosScreen
+            entries={sync.entries}
+            settings={settings}
+            photosByDate={sync.photosByDate}
+            isSupabaseConfigured={sync.isSupabaseConfigured}
+            focusDate={photoFocusDate}
+            onAddPhoto={addPhoto}
+            onReplacePhoto={replacePhoto}
+            onDeletePhoto={deletePhoto}
+            onViewPhoto={setPhotoViewerItem}
+            onRecropPhoto={recropPhoto}
+            onShare={sharePair}
+            onPlay={openTimelapse}
+            sharing={isSharing}
+            sharePendingKey={pendingShare?.key ?? null}
+            refreshing={isRefreshingUrls}
+            onRefreshUrls={refreshPhotoUrls}
+          />
+        )
       case 'progress':
-        return <ProgressScreen entries={sync.entries} settings={settings} onEditPlan={openPlanModal} />
+        return (
+          <ProgressScreen
+            entries={sync.entries}
+            settings={settings}
+            onEditPlan={openPlanModal}
+            measurements={sync.measurements}
+            onSaveMeasurement={sync.saveMeasurement}
+            onDeleteMeasurements={sync.deleteMeasurements}
+            badges={badges}
+          />
+        )
       case 'settings':
         return (
           <SettingsScreen
@@ -170,32 +323,47 @@ function App() {
             entries={sync.entries}
             settings={settings}
             movingAverage={sync.getMovingAverage(7)}
-            photosByDate={sync.photosByDate}
             onAdd={() => openAddModal()}
             onEditPlan={openPlanModal}
+            reviewData={{ photosByDate: sync.photosByDate, measurements: sync.measurements, badges, userId }}
           />
         )
     }
-  }, [tab, sync, settings, updateSettings, openPlanModal, openAddModal, handlePhotoPress])
+  }, [
+    tab,
+    sync,
+    settings,
+    updateSettings,
+    openPlanModal,
+    openAddModal,
+    handlePhotoPress,
+    photoFocusDate,
+    addPhoto,
+    replacePhoto,
+    deletePhoto,
+    recropPhoto,
+    sharePair,
+    openTimelapse,
+    isSharing,
+    pendingShare,
+    isRefreshingUrls,
+    refreshPhotoUrls,
+    badges,
+    userId,
+  ])
 
   if (sync.isLoading || !sync.hasLoaded) {
     return <LoadingScreen error={sync.error} onRetry={sync.reload} />
   }
 
-  const photoViewerPhoto = photoViewerEntry ? sync.getPhotoForDate(photoViewerEntry.date) : null
-  const photoComparePair = photoCompareEntry
-    ? buildEntryComparePair(sync.photosByDate, sync.entries, photoCompareEntry.date)
-    : null
-  const getCanCompare = (entry) =>
-    entry ? buildEntryComparePair(sync.photosByDate, sync.entries, entry.date) != null : false
+  const photoViewerPhoto = photoViewerItem ? sync.getPhotoForDate(photoViewerItem.date) : null
 
   return (
-    <div className="relative min-h-screen bg-bg-primary text-text-primary">
-      <div className="ambient-glow" aria-hidden="true" />
+    <div className="relative min-h-screen text-text-primary">
       <main className="relative z-10 mx-auto w-full max-w-md px-4 pb-[calc(var(--nav-h)+56px+16px)] pt-4">
         <InstallAppTutorial leading={tab === 'dashboard' ? <SyncStatusPill status={sync.syncStatus} /> : null} />
         {sync.error ? (
-          <div className="mb-3 rounded-2xl border border-accent-red/20 bg-accent-red/10 px-4 py-3 text-[13px] leading-relaxed text-accent-red">
+          <div className="mb-3 rounded-2xl border border-danger/20 bg-danger/10 px-4 py-3 text-[13px] leading-relaxed text-danger-text">
             {sync.error}
           </div>
         ) : null}
@@ -214,7 +382,7 @@ function App() {
         </button>
       ) : null}
 
-      <BottomNav current={tab} onChange={setTab} />
+      <BottomNav current={tab} onChange={changeTab} />
 
       <AddWeightModal
         key={isModalOpen ? `add-${addModalDate ?? 'today'}` : 'add-closed'}
@@ -224,61 +392,37 @@ function App() {
         onSave={sync.addEntry}
         initial={addModalDate ? { date: addModalDate } : null}
         getPhotoForDate={sync.getPhotoForDate}
+        getGhostUrl={ghostUrlForDate}
         isSaving={sync.isSaving}
         isSupabaseConfigured={sync.isSupabaseConfigured}
       />
-      <PhotoActionSheet
-        key={photoActionEntry ? `photo-action-${photoActionEntry.id}` : 'photo-action-closed'}
-        isOpen={Boolean(photoActionEntry)}
-        onClose={closePhotoAction}
-        date={photoActionEntry?.date}
-        weight={photoActionEntry?.weight}
-        unit={settings.unit}
-        hasPhoto={photoActionEntry ? sync.hasPhotoForDate(photoActionEntry.date) : false}
-        canCompare={getCanCompare(photoActionEntry)}
-        isSaving={sync.isSaving}
-        onUpload={async (blob) => {
-          if (!photoActionEntry) return
-          await sync.uploadDailyPhoto(photoActionEntry.date, blob)
-        }}
-        onView={() => {
-          if (!photoActionEntry) return
-          openPhotoViewer(photoActionEntry)
-        }}
-        onCompare={() => {
-          if (!photoActionEntry) return
-          openPhotoCompare(photoActionEntry)
-        }}
+      <AddPhotoFlow
+        key={photoFlow ? `flow-${photoFlow.date}-${photoFlow.recropUrl ? 'recrop' : 'pick'}` : 'flow-closed'}
+        open={Boolean(photoFlow)}
+        date={photoFlow?.date}
+        recropUrl={photoFlow?.recropUrl}
+        photos={photos}
+        onUpload={sync.uploadDailyPhoto}
+        onRefreshUrls={refreshUrls}
+        onClose={closePhotoFlow}
       />
+      {timelapseOpen ? (
+        <PhotoTimelapse photos={photos} unit={settings.unit} onClose={closeTimelapse} />
+      ) : null}
       <PhotoViewerModal
-        key={photoViewerEntry ? `photo-${photoViewerEntry.id}` : 'photo-closed'}
-        isOpen={Boolean(photoViewerEntry)}
-        onClose={closePhotoViewer}
-        date={photoViewerEntry?.date}
+        key={photoViewerItem ? `photo-${photoViewerItem.date}` : 'photo-closed'}
+        isOpen={Boolean(photoViewerItem && photoViewerPhoto)}
+        onClose={() => setPhotoViewerItem(null)}
+        date={photoViewerItem?.date}
         photoUrl={photoViewerPhoto?.url}
-        weight={photoViewerEntry?.weight}
+        weight={photoViewerItem?.weight}
         unit={settings.unit}
-        canCompare={getCanCompare(photoViewerEntry)}
-        isSaving={sync.isSaving}
-        onChangePhoto={async (blob) => {
-          if (!photoViewerEntry) return
-          await sync.uploadDailyPhoto(photoViewerEntry.date, blob)
-        }}
-        onDeletePhoto={async () => {
-          if (!photoViewerEntry) return
-          await sync.deleteDailyPhoto(photoViewerEntry.date)
-        }}
-        onCompare={() => {
-          if (!photoViewerEntry) return
-          openPhotoCompare(photoViewerEntry)
-        }}
       />
-      <PhotoCompareModal
-        key={photoCompareEntry ? `photo-compare-${photoCompareEntry.id}` : 'photo-compare-closed'}
-        isOpen={Boolean(photoCompareEntry && photoComparePair)}
-        onClose={closePhotoCompare}
-        pair={photoComparePair}
-        unit={settings.unit}
+      <CelebrationSheet
+        badges={
+          blockingDialogOpen || isModalOpen || photoFlow || isPlanModalOpen || shouldAutoOpenPlan ? [] : toCelebrate
+        }
+        onDismiss={dismissCelebration}
       />
       <WeightPlanModal
         key={`plan-${settings.weeklyPace ?? 'new'}-${isPlanModalOpen || shouldAutoOpenPlan}`}

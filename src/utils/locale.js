@@ -26,3 +26,9 @@ export function formatDatePlan(isoDate) {
 export function formatDatePlanShort(isoDate) {
   return format(parseISO(isoDate), 'd MMM yyyy', { locale: fr })
 }
+
+export function formatDateCompact(isoDate, today = new Date()) {
+  const date = parseISO(isoDate)
+  const pattern = date.getFullYear() === today.getFullYear() ? 'd MMM' : 'd MMM yyyy'
+  return format(date, pattern, { locale: fr })
+}

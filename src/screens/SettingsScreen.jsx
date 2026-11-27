@@ -2,6 +2,9 @@ import { useState } from 'react'
 import ConfirmSheet from '../components/ConfirmSheet'
 import ExportButton from '../components/ExportButton'
 import NumberField from '../components/NumberField'
+import GlassButton from '../components/ui/GlassButton'
+import GlassCard from '../components/ui/GlassCard'
+import SegmentedControl from '../components/ui/SegmentedControl'
 import {
   buildChallengeResetPatch,
   buildChallengeRestorePatch,
@@ -20,13 +23,13 @@ function IOSSwitch({ checked, onChange, label }) {
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`press-button relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200 ${
-        checked ? 'bg-accent-green' : 'bg-bg-elevated'
+      className={`press-button relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full border transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+        checked ? 'border-transparent bg-accent' : 'border-white/30 bg-white/25'
       }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
-          checked ? 'translate-x-6' : 'translate-x-1'
+        className={`inline-block h-[27px] w-[27px] transform rounded-full bg-white shadow-md transition duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          checked ? 'translate-x-[21px]' : 'translate-x-px'
         }`}
       />
     </button>
@@ -63,11 +66,11 @@ function ChallengeCard({ entries, settings, updateSettings }) {
 
   return (
     <div className="animate-fade-up animate-stagger-2">
-      <p className="section-label mb-3">Défi</p>
-      <div className="card-base space-y-4">
+      <p className="section-label mb-2 px-1">Défi</p>
+      <GlassCard className="space-y-4 p-4">
         <div>
-          <p className="text-sm font-medium text-text-primary">Point de départ</p>
-          <p className="mt-0.5 text-[13px] text-text-tertiary">
+          <p className="text-[15px] font-medium text-text-primary">Point de départ</p>
+          <p className="mt-0.5 text-[13px] text-text-secondary">
             {start
               ? `${formatDateShort(start.startDate)} · ${formatWeightWithUnit(start.startWeight, settings.unit)}`
               : 'Aucune pesée pour le moment'}
@@ -83,27 +86,27 @@ function ChallengeCard({ entries, settings, updateSettings }) {
             value={date}
             max={today}
             onChange={(event) => setDate(event.target.value || today)}
-            className="h-12 w-full rounded-xl border border-transparent bg-bg-card px-4 text-base text-white outline-none transition duration-200 focus:border-white/20 [color-scheme:dark]"
+            className="glass-field h-12 w-full px-4 text-base [color-scheme:dark]"
           />
         </div>
-        <button
-          type="button"
+        <GlassButton
+          variant="secondary"
           onClick={() => setConfirming('restart')}
           disabled={!entries.length}
-          className="press-button h-12 w-full rounded-xl bg-accent-green/15 text-[15px] font-medium text-accent-green disabled:opacity-40"
+          className="w-full"
         >
           Recommencer le défi à zéro
-        </button>
+        </GlassButton>
         {isCustom ? (
           <button
             type="button"
             onClick={() => setConfirming('restore')}
-            className="press-button w-full text-center text-[13px] text-text-tertiary underline-offset-2 hover:underline"
+            className="press-button min-h-11 w-full text-center text-[14px] font-medium text-accent-text underline-offset-2 hover:underline"
           >
             Reprendre depuis la première pesée
           </button>
         ) : null}
-      </div>
+      </GlassCard>
       <ConfirmSheet
         open={confirming === 'restart'}
         title={`Recommencer le défi ${restartLabel} ?`}
@@ -159,19 +162,18 @@ function SettingsScreen({ entriesApi, settings, updateSettings, onEditPlan }) {
     updateSettings({ reminderEnabled: enabled })
   }
 
-  const inputClass =
-    'h-12 w-full rounded-xl border border-transparent bg-bg-card px-4 text-base text-white outline-none transition duration-200 focus:border-white/20'
+  const inputClass = 'glass-field h-12 w-full px-4 text-base [color-scheme:dark]'
 
   return (
     <section className="space-y-4">
       <div className="animate-fade-up">
-        <h2 className="text-[18px] font-semibold">Paramètres</h2>
-        <p className="mt-0.5 text-[13px] text-text-tertiary">Profil et préférences</p>
+        <h2 className="text-[28px] font-bold leading-tight tracking-[-0.02em] text-text-primary">Réglages</h2>
+        <p className="mt-0.5 text-[13px] font-medium text-text-secondary">Profil et préférences</p>
       </div>
 
       <div className="animate-fade-up animate-stagger-1">
-        <p className="section-label mb-3">Profil</p>
-        <div className="card-base space-y-4">
+        <p className="section-label mb-2 px-1">Profil</p>
+        <GlassCard className="space-y-4 p-4">
           <NumberField
             label="Taille (cm)"
             value={settings.height}
@@ -190,59 +192,44 @@ function SettingsScreen({ entriesApi, settings, updateSettings, onEditPlan }) {
             format={formatWeight}
             onCommit={(targetWeight) => updateSettings({ targetWeight })}
           />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => onUnitChange('kg')}
-              className={`press-button h-12 flex-1 rounded-xl text-base font-medium transition duration-200 ${
-                settings.unit === 'kg' ? 'bg-white text-black shadow-sm' : 'bg-bg-elevated text-text-secondary'
-              }`}
-            >
-              kg
-            </button>
-            <button
-              type="button"
-              onClick={() => onUnitChange('lbs')}
-              className={`press-button h-12 flex-1 rounded-xl text-base font-medium transition duration-200 ${
-                settings.unit === 'lbs' ? 'bg-white text-black shadow-sm' : 'bg-bg-elevated text-text-secondary'
-              }`}
-            >
-              lbs
-            </button>
-          </div>
-        </div>
+          <SegmentedControl
+            ariaLabel="Unité"
+            value={settings.unit}
+            onChange={onUnitChange}
+            options={[
+              { value: 'kg', label: 'kg' },
+              { value: 'lbs', label: 'lbs' },
+            ]}
+          />
+        </GlassCard>
       </div>
 
       <ChallengeCard entries={entriesApi.entries} settings={settings} updateSettings={updateSettings} />
 
       <div className="animate-fade-up animate-stagger-2">
-        <p className="section-label mb-3">Plan de poids</p>
-        <div className="card-base space-y-4">
+        <p className="section-label mb-2 px-1">Plan de poids</p>
+        <GlassCard className="space-y-4 p-4">
           <div>
-            <p className="text-sm font-medium text-text-primary">Rythme et points de contrôle</p>
-            <p className="mt-0.5 text-[13px] text-text-tertiary">
+            <p className="text-[15px] font-medium text-text-primary">Rythme et points de contrôle</p>
+            <p className="mt-0.5 text-[13px] text-text-secondary">
               {settings.weeklyPace != null
                 ? `Rythme actuel : ${formatPace(settings.weeklyPace, settings.unit)}`
                 : 'Aucun rythme défini'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onEditPlan}
-            className="press-button h-12 w-full rounded-xl bg-plan/15 text-[15px] font-medium text-plan"
-          >
+          <GlassButton variant="secondary" onClick={onEditPlan} className="w-full">
             {settings.weeklyPace != null ? 'Ajuster le plan de poids' : 'Configurer le plan de poids'}
-          </button>
-        </div>
+          </GlassButton>
+        </GlassCard>
       </div>
 
       <div className="animate-fade-up animate-stagger-3">
-        <p className="section-label mb-3">Rappels</p>
-        <div className="card-base space-y-4">
-          <div className="flex items-center justify-between gap-4">
+        <p className="section-label mb-2 px-1">Rappels</p>
+        <GlassCard className="divide-y divide-white/10 px-4">
+          <div className="flex items-center justify-between gap-4 py-3.5">
             <div>
-              <p className="text-sm font-medium text-text-primary">Activer les rappels</p>
-              <p className="mt-0.5 text-[13px] text-text-tertiary">Notification quotidienne</p>
+              <p className="text-[15px] font-medium text-text-primary">Activer les rappels</p>
+              <p className="mt-0.5 text-[13px] text-text-secondary">Notification quotidienne</p>
             </div>
             <IOSSwitch
               checked={settings.reminderEnabled}
@@ -250,15 +237,18 @@ function SettingsScreen({ entriesApi, settings, updateSettings, onEditPlan }) {
               label="Activer les rappels"
             />
           </div>
-          <p className="text-[13px] text-text-secondary">
+          <p className="py-3.5 text-[13px] leading-relaxed text-text-secondary">
             {typeof Notification !== 'undefined' && Notification.permission === 'denied'
               ? "Notifications bloquées dans le navigateur : le rappel s'affichera dans l'app."
               : "Le rappel s'affiche à l'heure choisie si l'app est ouverte, ou dès que tu la rouvres. Installe l'app pour recevoir une notification."}
           </p>
           {settings.reminderEnabled ? (
-            <div className="animate-fade-up">
-              <label className="mb-2 block text-sm text-text-secondary">Heure du rappel</label>
+            <div className="animate-fade-up py-3.5">
+              <label htmlFor="reminder-time" className="mb-2 block text-sm text-text-secondary">
+                Heure du rappel
+              </label>
               <input
+                id="reminder-time"
                 type="time"
                 value={settings.reminderTime || '08:00'}
                 onChange={(event) => updateSettings({ reminderTime: event.target.value || '08:00' })}
@@ -266,16 +256,19 @@ function SettingsScreen({ entriesApi, settings, updateSettings, onEditPlan }) {
               />
             </div>
           ) : null}
-        </div>
+        </GlassCard>
       </div>
 
       <div className="animate-fade-up animate-stagger-4">
-        <p className="section-label mb-3">Données</p>
-        <div className="card-base space-y-3">
+        <p className="section-label mb-2 px-1">Données</p>
+        <GlassCard className="divide-y divide-white/10 overflow-hidden">
           <ExportButton onExport={entriesApi.exportCSV} label="Exporter en CSV" />
           <ExportButton onExport={() => entriesApi.exportJSON(settings)} label="Exporter en JSON" />
-          <label className="press-button flex h-12 cursor-pointer items-center rounded-xl bg-bg-elevated px-4 text-[15px] text-text-primary transition duration-200">
+          <label className="press-button flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 text-[15px] text-text-primary transition duration-200 focus-within:outline-2 focus-within:outline-accent">
             Importer un fichier JSON
+            <span aria-hidden="true" className="text-[17px] text-text-secondary">
+              ›
+            </span>
             <input
               type="file"
               accept=".json"
@@ -292,18 +285,14 @@ function SettingsScreen({ entriesApi, settings, updateSettings, onEditPlan }) {
               }}
             />
           </label>
-        </div>
+        </GlassCard>
       </div>
 
       <div className="animate-fade-up animate-stagger-5">
-        <p className="section-label mb-3">Zone de danger</p>
-        <button
-          type="button"
-          onClick={() => setIsClearOpen(true)}
-          className="press-button h-12 w-full rounded-xl border border-accent-red text-base font-medium text-accent-red transition duration-200"
-        >
+        <p className="section-label mb-2 px-1">Zone de danger</p>
+        <GlassButton variant="danger" size="lg" onClick={() => setIsClearOpen(true)} className="w-full">
           Effacer toutes les données
-        </button>
+        </GlassButton>
         <ConfirmSheet
           open={isClearOpen}
           title="Effacer toutes les données ?"
