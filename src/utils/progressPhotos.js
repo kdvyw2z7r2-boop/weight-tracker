@@ -90,6 +90,26 @@ export function availableShortcuts(photos, ctx) {
   }
 }
 
+/** Paire par défaut : Départ, sinon 30 jours, sinon première/dernière (jamais vide s'il y a des photos). */
+export function defaultPair(photos, ctx) {
+  return (
+    shortcutPair(photos, 'start', ctx) ??
+    shortcutPair(photos, 'd30', ctx) ??
+    (photos.length >= 2
+      ? { before: photos[0], after: photos[photos.length - 1] }
+      : photos.length === 1
+        ? { before: photos[0], after: null }
+        : null)
+  )
+}
+
+/** Raison d'un raccourci indisponible (infobulle), ou null s'il est disponible. */
+export function shortcutDisabledReason(photos, key, ctx) {
+  if (availableShortcuts(photos, ctx)[key]) return null
+  if (key === 'start' && photos.length >= 2 && ctx.challengeStartDate) return 'Le défi vient de commencer'
+  return 'Pas assez de photos'
+}
+
 /** Applique une sélection de slot en garantissant avant < après et deux photos distinctes. */
 export function selectForSlot(pair, slot, photo, photos) {
   let before = slot === 'before' ? photo : pair.before

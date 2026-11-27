@@ -10,10 +10,12 @@ import { formatDays, formatDelta } from "../utils/format";
 import { formatDateCompact, formatDateEntry } from "../utils/locale";
 import {
   availableShortcuts,
+  defaultPair,
   listPhotos,
   pairForJournalDate,
   pairStats,
   selectForSlot,
+  shortcutDisabledReason,
   shortcutPair,
 } from "../utils/progressPhotos";
 
@@ -132,8 +134,9 @@ function PhotosScreen({
   const [optionsPhoto, setOptionsPhoto] = useState(null);
   const [deletePhoto, setDeletePhoto] = useState(null);
 
+  // Jamais vide s'il y a des photos (ex. défi réinitialisé aujourd'hui : « Départ » indisponible).
   const pair =
-    resolveSelection(photos, selection) ?? shortcutPair(photos, "start", ctx);
+    resolveSelection(photos, selection) ?? defaultPair(photos, ctx);
 
   // Lien depuis le Journal (ou photo ajoutée pour une date) : appliqué une fois, dès que la photo existe.
   if (
@@ -173,8 +176,9 @@ function PhotosScreen({
   };
 
   const handleSelect = (photo) => {
-    if (!pair) return;
-    const next = selectForSlot(pair, activeSlot, photo, photos);
+    const base = pair ?? defaultPair(photos, ctx);
+    if (!base) return;
+    const next = selectForSlot(base, activeSlot, photo, photos);
     setSelection(toSelection(next));
     if (next.before?.date === photo.date) setActiveSlot("before");
     else if (next.after?.date === photo.date) setActiveSlot("after");
@@ -253,7 +257,11 @@ function PhotosScreen({
               key={shortcut.key}
               type="button"
               disabled={!enabled}
-              title={enabled ? undefined : "Pas assez de photos"}
+              title={
+                enabled
+                  ? undefined
+                  : shortcutDisabledReason(photos, shortcut.key, ctx)
+              }
               aria-pressed={active}
               onClick={() => applyShortcut(shortcut.key)}
               className={`press-button min-h-[44px] rounded-full px-4 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-40 ${

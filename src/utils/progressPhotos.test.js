@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   availableShortcuts,
+  defaultPair,
   ghostFor,
   groupByMonth,
   listPhotos,
@@ -8,6 +9,7 @@ import {
   pairForJournalDate,
   pairStats,
   selectForSlot,
+  shortcutDisabledReason,
   shortcutPair,
   weightForDate,
 } from './progressPhotos'
@@ -105,5 +107,65 @@ describe('progressPhotos', () => {
     const withNull = listPhotos({ '2026-10-01': { storagePath: 'p', url: null } }, [])
     expect(withNull).toEqual([{ date: '2026-10-01', url: null, storagePath: 'p', weight: null }])
     expect(pairForJournalDate([photos[0]], '2026-10-01', null)).toEqual({ before: photos[0], after: null })
+  })
+
+  describe('defaultPair', () => {
+    const dates = (pair) => pair && [pair.before.date, pair.after?.date ?? null]
+
+    it('Départ quand il est disponible', () => {
+      expect(dates(defaultPair(photos, ctx))).toEqual(['2026-10-01', '2026-11-26'])
+    })
+
+    it('défi démarré le jour de la dernière photo : repli sur 30 jours', () => {
+      const c = { today: '2026-11-26', challengeStartDate: '2026-11-26' }
+      expect(shortcutPair(photos, 'start', c)).toBeNull()
+      expect(dates(defaultPair(photos, c))).toEqual(['2026-10-20', '2026-11-26'])
+    })
+
+    it('défi démarré aujourd’hui avec une photo du jour', () => {
+      const withToday = listPhotos(
+        { ...photosByDate, '2026-11-27': { storagePath: 'u/t.jpg', url: 'https://x/t' } },
+        entries,
+      )
+      const c = { today: '2026-11-27', challengeStartDate: '2026-11-27' }
+      const pair = defaultPair(withToday, c)
+      expect(pair).not.toBeNull()
+      expect(pair.after.date).toBe('2026-11-27')
+      expect(pair.before.date < pair.after.date).toBe(true)
+    })
+
+    it('défi aujourd’hui sans photo du jour : Départ = première photo', () => {
+      const c = { today: '2026-11-27', challengeStartDate: '2026-11-27' }
+      expect(dates(defaultPair(photos, c))).toEqual(['2026-10-01', '2026-11-26'])
+    })
+
+    it('deux photos le jour du défi ou après : repli sur 30 jours', () => {
+      const two = photos.slice(2)
+      const c = { today: '2026-11-26', challengeStartDate: '2026-11-26' }
+      expect(shortcutPair(two, 'start', c)).toBeNull()
+      expect(dates(defaultPair(two, c))).toEqual(['2026-11-10', '2026-11-26'])
+    })
+
+    it('une photo seule, aucune photo', () => {
+      expect(dates(defaultPair(photos.slice(0, 1), ctx))).toEqual(['2026-10-01', null])
+      expect(defaultPair([], ctx)).toBeNull()
+    })
+  })
+
+  describe('shortcutDisabledReason', () => {
+    it('Départ bloqué par la date du défi', () => {
+      const c = { today: '2026-11-26', challengeStartDate: '2026-11-26' }
+      expect(shortcutDisabledReason(photos, 'start', c)).toBe('Le défi vient de commencer')
+    })
+
+    it('sinon « Pas assez de photos »', () => {
+      const c = { today: '2026-11-27', challengeStartDate: null }
+      expect(shortcutDisabledReason(photos.slice(0, 1), 'd7', c)).toBe('Pas assez de photos')
+      expect(shortcutDisabledReason([], 'start', c)).toBe('Pas assez de photos')
+    })
+
+    it('null quand le raccourci est disponible', () => {
+      expect(shortcutDisabledReason(photos, 'start', ctx)).toBeNull()
+    })
   })
 })
