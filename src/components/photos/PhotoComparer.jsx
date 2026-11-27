@@ -2,10 +2,16 @@ import { useRef, useState } from 'react'
 import { clampPercent, percentFromPointer } from '../../utils/curtain'
 import { formatDateCompact } from '../../utils/locale'
 
-const FRAME = 'relative aspect-[9/16] overflow-hidden rounded-[16px] bg-bg-elevated'
+// Largeur plafonnée (hauteur max min(62vh,560px) x 9/16) : le cadre reste exactement 9:16.
+const FRAME =
+  'relative aspect-[9/16] w-full max-w-[min(34.875vh,315px)] justify-self-center mx-auto overflow-hidden rounded-[16px] bg-bg-elevated'
 const MAX_H = 'max-h-[min(62vh,560px)]'
 
-function PhotoImage({ photo, onImageError, className = '' }) {
+function PhotoImage({ photo, ...props }) {
+  return <PhotoImageInner key={photo.url ?? ''} photo={photo} {...props} />
+}
+
+function PhotoImageInner({ photo, onImageError, className = '' }) {
   const [failed, setFailed] = useState(false)
 
   if (!photo.url || failed) {
@@ -20,7 +26,7 @@ function PhotoImage({ photo, onImageError, className = '' }) {
               setFailed(false)
               onImageError?.(photo)
             }}
-            className="press-button rounded-full bg-white/10 px-3 py-1.5 text-[12px] font-medium text-text-secondary"
+            className="press-button min-h-[44px] rounded-full bg-white/10 px-4 text-[12px] font-medium text-text-secondary"
           >
             Réessayer
           </button>
@@ -96,7 +102,7 @@ function Curtain({ before, after, onImageError }) {
   }
 
   return (
-    <div ref={boxRef} className={`${FRAME} ${MAX_H} mx-auto touch-pan-y`}>
+    <div ref={boxRef} className={`${FRAME} ${MAX_H} touch-pan-y`}>
       <PhotoImage photo={before} onImageError={onImageError} />
       <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${percent}%)` }}>
         <PhotoImage photo={after} onImageError={onImageError} />
@@ -111,11 +117,12 @@ function Curtain({ before, after, onImageError }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(percent)}
+        aria-valuetext={`${Math.round(percent)} % après`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onKeyDown={onKeyDown}
-        className="absolute inset-y-0 w-11 -translate-x-1/2 cursor-ew-resize touch-none focus-visible:outline-none"
-        style={{ left: `${percent}%` }}
+        className="absolute inset-y-0 w-11 -translate-x-1/2 cursor-ew-resize touch-none outline-none focus-visible:[&>span:last-child]:ring-2 focus-visible:[&>span:last-child]:ring-accent-blue"
+        style={{ left: `clamp(22px, ${percent}%, calc(100% - 22px))` }}
       >
         <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-white" />
         <span className="absolute top-1/2 left-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[14px] text-black">
@@ -130,8 +137,8 @@ function Fade({ before, after, onImageError }) {
   const [opacity, setOpacity] = useState(50)
 
   return (
-    <div className="mx-auto flex flex-col gap-3">
-      <div className={`${FRAME} ${MAX_H} mx-auto w-full`}>
+    <div className="flex flex-col gap-1">
+      <div className={`${FRAME} ${MAX_H}`}>
         <PhotoImage photo={before} onImageError={onImageError} />
         <div className="absolute inset-0" style={{ opacity: opacity / 100 }}>
           <PhotoImage photo={after} onImageError={onImageError} />
@@ -146,7 +153,7 @@ function Fade({ before, after, onImageError }) {
         value={opacity}
         onChange={(event) => setOpacity(Number(event.target.value))}
         aria-label="Opacité de la photo après"
-        className="w-full accent-white"
+        className="h-11 w-full accent-white"
       />
     </div>
   )

@@ -20,7 +20,7 @@ function CompareModeSwitch({ value, onChange }) {
             role="radio"
             aria-checked={active}
             onClick={() => onChange(mode.key)}
-            className={`press-button rounded-[18px] px-3.5 py-1.5 text-[13px] font-medium ${
+            className={`press-button min-h-[44px] rounded-[18px] px-3.5 text-[13px] font-medium ${
               active ? 'bg-white text-black' : 'text-text-tertiary hover:text-text-secondary'
             }`}
           >
