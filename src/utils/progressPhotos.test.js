@@ -86,4 +86,24 @@ describe('progressPhotos', () => {
     expect(pairForJournalDate(photos, '2026-10-20', { before: photos[2], after: photos[3] })).toMatchObject({ before: { date: '2026-10-01' }, after: { date: '2026-10-20' } })
     expect(pairForJournalDate(photos, '2026-09-01', null)).toBeNull()
   })
+
+  it('selectForSlot avec peu de photos', () => {
+    const one = [photos[0]]
+    expect(selectForSlot({ before: photos[0], after: null }, 'after', photos[0], one)).toEqual({ before: photos[0], after: null })
+    expect(selectForSlot({ before: photos[0], after: null }, 'before', photos[0], one)).toEqual({ before: photos[0], after: null })
+    const two = [photos[0], photos[1]]
+    expect(selectForSlot({ before: photos[0], after: photos[1] }, 'after', photos[0], two)).toMatchObject({ before: { date: '2026-10-01' }, after: { date: '2026-10-20' } })
+    expect(selectForSlot({ before: photos[0], after: photos[1] }, 'before', photos[1], two)).toMatchObject({ before: { date: '2026-10-01' }, after: { date: '2026-10-20' } })
+  })
+
+  it('pairStats défensif', () => {
+    expect(pairStats({ before: null, after: photos[0] }, { goalIsLoss: true })).toEqual({ days: null, delta: null, isGood: null })
+  })
+
+  it('cas limites', () => {
+    expect(shortcutPair(photos, 'start', { ...ctx, challengeStartDate: '2027-01-01' }).before.date).toBe('2026-10-01')
+    const withNull = listPhotos({ '2026-10-01': { storagePath: 'p', url: null } }, [])
+    expect(withNull).toEqual([{ date: '2026-10-01', url: null, storagePath: 'p', weight: null }])
+    expect(pairForJournalDate([photos[0]], '2026-10-01', null)).toEqual({ before: photos[0], after: null })
+  })
 })

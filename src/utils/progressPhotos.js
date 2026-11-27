@@ -97,6 +97,11 @@ export function selectForSlot(pair, slot, photo, photos) {
   const other = slot === 'before' ? after : before
   if (other && other.date === photo.date) {
     const alt = nearestPhoto(photos, photo.date, { exclude: photo.date })
+    if (!alt) {
+      return slot === 'before'
+        ? { before: photo, after: null }
+        : { before: pair.before ?? photo, after: null }
+    }
     if (slot === 'before') after = alt
     else before = alt
   }
@@ -120,6 +125,7 @@ export function pairForJournalDate(photos, date, currentPair) {
 
 export function pairStats(pair, { goalIsLoss }) {
   const { before, after } = pair
+  if (!before) return { days: null, delta: null, isGood: null }
   const days = after ? dayGap(after.date, before.date) : null
   const hasWeights = after && before.weight != null && after.weight != null
   const delta = hasWeights ? Math.round((after.weight - before.weight) * 100) / 100 : null
