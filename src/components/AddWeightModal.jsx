@@ -23,6 +23,7 @@ function AddWeightModal({
   unit = 'kg',
   initial = null,
   getPhotoForDate = null,
+  getGhostUrl = null,
   isSaving = false,
   isSupabaseConfigured = false,
 }) {
@@ -309,6 +310,7 @@ function AddWeightModal({
       <PhotoCropModal
         isOpen={isCropOpen}
         imageUrl={pendingImageUrl}
+        ghostUrl={getGhostUrl?.(date) ?? null}
         onClose={closeCrop}
         onConfirm={handleCropConfirm}
       />

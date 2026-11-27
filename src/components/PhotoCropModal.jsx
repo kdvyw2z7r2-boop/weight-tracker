@@ -2,18 +2,24 @@ import { useCallback, useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { PHOTO_ASPECT, cropImageToBlob } from '../utils/photo'
 
-function PhotoCropModal({ isOpen, imageUrl, onClose, onConfirm }) {
+function PhotoCropModal({ isOpen, imageUrl, ghostUrl = null, onClose, onConfirm }) {
   if (!isOpen || !imageUrl) return null
   // key : l'état du recadrage repart de zéro à chaque ouverture / nouvelle image
-  return <PhotoCropEditor key={imageUrl} imageUrl={imageUrl} onClose={onClose} onConfirm={onConfirm} />
+  return (
+    <PhotoCropEditor key={imageUrl} imageUrl={imageUrl} ghostUrl={ghostUrl} onClose={onClose} onConfirm={onConfirm} />
+  )
 }
 
-function PhotoCropEditor({ imageUrl, onClose, onConfirm }) {
+function PhotoCropEditor({ imageUrl, ghostUrl, onClose, onConfirm }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
+  const [guideOn, setGuideOn] = useState(true)
+  // Taille réelle du cadre 9:16 calculée par react-easy-crop (centré dans la zone) : le fantôme s'y cale exactement.
+  const [cropSize, setCropSize] = useState(null)
+  const showGhost = Boolean(ghostUrl) && guideOn && cropSize != null
 
   const handleCropComplete = useCallback((_croppedArea, croppedPixels) => {
     setCroppedAreaPixels(croppedPixels)
@@ -68,8 +74,44 @@ function PhotoCropEditor({ imageUrl, onClose, onConfirm }) {
           onCropComplete={handleCropComplete}
           objectFit="contain"
           showGrid={false}
+          onCropSizeChange={setCropSize}
         />
+        {ghostUrl && cropSize ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+            <img
+              src={ghostUrl}
+              alt=""
+              data-testid="crop-ghost"
+              draggable={false}
+              style={{ width: cropSize.width, height: cropSize.height }}
+              className={`object-cover transition-opacity duration-200 ${showGhost ? 'opacity-35' : 'opacity-0'}`}
+            />
+          </div>
+        ) : null}
       </div>
+
+      {ghostUrl ? (
+        <div className="flex min-h-11 items-center justify-between gap-3 px-5 pt-2">
+          <p className="text-[12px] text-text-tertiary">{guideOn ? 'Cale-toi sur la photo précédente' : ' '}</p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={guideOn}
+            onClick={() => setGuideOn((value) => !value)}
+            className="press-button flex min-h-11 items-center gap-2 rounded-lg px-2 text-[14px] font-medium text-white"
+          >
+            Guide
+            <span
+              aria-hidden="true"
+              className={`relative h-6 w-10 rounded-full transition-colors ${guideOn ? 'bg-accent-green' : 'bg-bg-elevated'}`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${guideOn ? 'left-[18px]' : 'left-0.5'}`}
+              />
+            </span>
+          </button>
+        </div>
+      ) : null}
 
       <div className="px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4">
         <label className="mb-2 block text-center text-[12px] font-medium uppercase tracking-wide text-text-tertiary">

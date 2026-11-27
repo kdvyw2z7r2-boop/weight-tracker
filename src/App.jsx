@@ -1,16 +1,17 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import BottomNav from './BottomNav'
 import AddWeightModal from './components/AddWeightModal'
 import InstallAppTutorial from './components/InstallAppTutorial'
 import PageTransition from './components/PageTransition'
 import PhotoViewerModal from './components/PhotoViewerModal'
-import QuickPhotoFlow from './components/photos/QuickPhotoFlow'
+import AddPhotoFlow from './components/photos/AddPhotoFlow'
 import WeightPlanModal from './components/WeightPlanModal'
 import useDailyReminder from './hooks/useDailyReminder'
 import useScrollDirection from './hooks/useScrollDirection'
 import useSync from './hooks/useSync'
 import { useToast } from './hooks/useToast'
 import useUserId from './hooks/useUserId'
+import { ghostFor, listPhotos } from './utils/progressPhotos'
 import DashboardScreen from './screens/DashboardScreen'
 import LogScreen from './screens/LogScreen'
 import PhotosScreen from './screens/PhotosScreen'
@@ -71,9 +72,9 @@ function App() {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
   const [planModalDismissed, setPlanModalDismissed] = useState(false)
   const [photoViewerItem, setPhotoViewerItem] = useState(null)
+  const [photoFlow, setPhotoFlow] = useState(null)
   const [photoFocusDate, setPhotoFocusDate] = useState(null)
   const [addModalDate, setAddModalDate] = useState(null)
-  const photoFlowRef = useRef(null)
   const { show: showToast } = useToast()
 
   const { settings, updateSettings } = sync
@@ -120,13 +121,19 @@ function App() {
 
   const { hasPhotoForDate, deleteDailyPhoto, isSupabaseConfigured } = sync
 
-  // Ajout / remplacement / recadrage : point unique, remplacé par l'ajout guidé (Task 5).
+  const photos = useMemo(() => listPhotos(sync.photosByDate, sync.entries), [sync.photosByDate, sync.entries])
+  const ghostUrlForDate = useCallback((date) => ghostFor(photos, date)?.url ?? null, [photos])
+
+  // Ajout / remplacement / recadrage : un seul flux guidé (source -> cadrage avec fantôme -> envoi).
   const addPhoto = useCallback((date) => {
     setPhotoFocusDate(date)
-    photoFlowRef.current?.pick(date)
+    setPhotoFlow({ date, recropUrl: null })
   }, [])
-  const replacePhoto = useCallback((date) => photoFlowRef.current?.pick(date), [])
-  const recropPhoto = useCallback((item) => photoFlowRef.current?.recrop(item), [])
+  const replacePhoto = useCallback((date) => setPhotoFlow({ date, recropUrl: null }), [])
+  const recropPhoto = useCallback((item) => {
+    if (item?.url) setPhotoFlow({ date: item.date, recropUrl: item.url })
+  }, [])
+  const closePhotoFlow = useCallback(() => setPhotoFlow(null), [])
 
   const deletePhoto = useCallback(
     async (date) => {
@@ -146,7 +153,7 @@ function App() {
       setTab('photos')
       setPhotoFocusDate(entry.date)
       // Sans Supabase, l'onglet affiche l'état explicatif : pas de sélecteur de fichier.
-      if (isSupabaseConfigured && !hasPhotoForDate(entry.date)) photoFlowRef.current?.pick(entry.date)
+      if (isSupabaseConfigured && !hasPhotoForDate(entry.date)) setPhotoFlow({ date: entry.date, recropUrl: null })
     },
     [hasPhotoForDate, isSupabaseConfigured],
   )
@@ -259,10 +266,19 @@ function App() {
         onSave={sync.addEntry}
         initial={addModalDate ? { date: addModalDate } : null}
         getPhotoForDate={sync.getPhotoForDate}
+        getGhostUrl={ghostUrlForDate}
         isSaving={sync.isSaving}
         isSupabaseConfigured={sync.isSupabaseConfigured}
       />
-      <QuickPhotoFlow ref={photoFlowRef} onUpload={sync.uploadDailyPhoto} />
+      <AddPhotoFlow
+        key={photoFlow ? `flow-${photoFlow.date}-${photoFlow.recropUrl ? 'recrop' : 'pick'}` : 'flow-closed'}
+        open={Boolean(photoFlow)}
+        date={photoFlow?.date}
+        recropUrl={photoFlow?.recropUrl}
+        photos={photos}
+        onUpload={sync.uploadDailyPhoto}
+        onClose={closePhotoFlow}
+      />
       <PhotoViewerModal
         key={photoViewerItem ? `photo-${photoViewerItem.date}` : 'photo-closed'}
         isOpen={Boolean(photoViewerItem && photoViewerPhoto)}
@@ -271,15 +287,6 @@ function App() {
         photoUrl={photoViewerPhoto?.url}
         weight={photoViewerItem?.weight}
         unit={settings.unit}
-        isSaving={sync.isSaving}
-        onChangePhoto={async (blob) => {
-          if (!photoViewerItem) return
-          await sync.uploadDailyPhoto(photoViewerItem.date, blob)
-        }}
-        onDeletePhoto={async () => {
-          if (!photoViewerItem) return
-          await sync.deleteDailyPhoto(photoViewerItem.date)
-        }}
       />
       <WeightPlanModal
         key={`plan-${settings.weeklyPace ?? 'new'}-${isPlanModalOpen || shouldAutoOpenPlan}`}
