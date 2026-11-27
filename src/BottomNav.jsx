@@ -1,5 +1,3 @@
-import { useLayoutEffect, useRef, useState } from 'react'
-
 const tabs = [
   {
     id: 'dashboard',
@@ -66,52 +64,22 @@ const tabs = [
 ]
 
 function BottomNav({ current, onChange }) {
-  const containerRef = useRef(null)
-  const buttonRefs = useRef({})
-  const [indicator, setIndicator] = useState({ left: 0, width: 0 })
-
-  useLayoutEffect(() => {
-    const button = buttonRefs.current[current]
-    const container = containerRef.current
-    if (!button || !container) return
-    const containerRect = container.getBoundingClientRect()
-    const buttonRect = button.getBoundingClientRect()
-    setIndicator({
-      left: buttonRect.left - containerRect.left + buttonRect.width / 2 - 16,
-      width: 32,
-    })
-  }, [current])
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-bg-nav/97 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl" style={{ borderColor: 'color-mix(in srgb, var(--color-accent-blue) 15%, transparent)' }}>
-      <div ref={containerRef} className="relative mx-auto grid h-16 w-full max-w-md grid-cols-5">
-        <span
-          className="nav-indicator absolute top-0 h-[2px] rounded-full transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
-          style={{
-            left: indicator.left,
-            width: indicator.width,
-            background: 'linear-gradient(90deg, var(--color-accent-blue), var(--color-accent-purple))',
-            boxShadow: '0 0 8px color-mix(in srgb, var(--color-accent-blue) 80%, transparent)',
-          }}
-          aria-hidden="true"
-        />
+    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))]">
+      <div className="glass glass-bar pointer-events-auto mx-auto grid h-16 w-full max-w-md grid-cols-5 gap-1 p-1.5">
         {tabs.map((tab) => {
           const active = current === tab.id
           return (
             <button
               key={tab.id}
-              ref={(node) => {
-                buttonRefs.current[tab.id] = node
-              }}
               type="button"
               onClick={() => onChange(tab.id)}
               aria-current={active ? 'page' : undefined}
-              style={active ? { color: 'var(--color-accent-blue)', filter: 'drop-shadow(0 0 4px color-mix(in srgb, var(--color-accent-blue) 50%, transparent))' } : undefined}
-              className={`press-button flex min-w-0 flex-col items-center justify-center gap-1 transition-all duration-200 ${
-                active ? '' : 'text-text-tertiary'
+              className={`press-button flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[22px] ${
+                active ? 'bg-white/14 text-text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]' : 'text-text-secondary'
               }`}
             >
-              {tab.icon()}
+              <span className={active ? 'text-accent' : undefined}>{tab.icon()}</span>
               <span className="text-[10px] font-medium">{tab.label}</span>
             </button>
           )

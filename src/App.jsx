@@ -7,6 +7,7 @@ import PhotoViewerModal from './components/PhotoViewerModal'
 import AddPhotoFlow from './components/photos/AddPhotoFlow'
 import PhotoTimelapse from './components/photos/PhotoTimelapse'
 import WeightPlanModal from './components/WeightPlanModal'
+import GlassButton from './components/ui/GlassButton'
 import useDailyReminder from './hooks/useDailyReminder'
 import useScrollDirection from './hooks/useScrollDirection'
 import useSync from './hooks/useSync'
@@ -35,7 +36,7 @@ function SyncStatusPill({ status }) {
       role="status"
       title={title}
       aria-label={`Hors ligne · données locales. ${title}`}
-      className="flex h-7 min-w-0 items-center gap-1.5 rounded-full bg-bg-elevated px-2.5 text-[11px] font-medium text-text-secondary"
+      className="glass-pill flex h-7 min-w-0 items-center gap-1.5 px-2.5 text-[11px] font-medium text-text-secondary"
     >
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
       <span className="truncate">Hors ligne · données locales</span>
@@ -45,20 +46,19 @@ function SyncStatusPill({ status }) {
 
 function LoadingScreen({ error, onRetry }) {
   return (
-    <div className="relative min-h-screen bg-bg-primary text-text-primary">
-      <div className="ambient-glow" aria-hidden="true" />
+    <div className="relative min-h-screen text-text-primary">
       <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-md items-center px-4">
-        <div className="card-base w-full text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-bg-elevated">
+        <div className="glass w-full p-6 text-center">
+          <div className="glass-pill mx-auto flex h-12 w-12 items-center justify-center">
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" aria-hidden="true" />
           </div>
           <h1 className="mt-5 text-lg font-semibold">Chargement…</h1>
           {error ? (
             <>
-              <p className="mt-4 rounded-xl bg-accent-red/10 px-4 py-3 text-sm text-accent-red">{error}</p>
-              <button type="button" onClick={onRetry} className="btn-primary mt-5 h-11 px-6 text-[15px]">
+              <p className="mt-4 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>
+              <GlassButton onClick={onRetry} className="mt-5 px-6">
                 Réessayer
-              </button>
+              </GlassButton>
             </>
           ) : null}
         </div>
@@ -323,8 +323,7 @@ function App() {
   const photoViewerPhoto = photoViewerItem ? sync.getPhotoForDate(photoViewerItem.date) : null
 
   return (
-    <div className="relative min-h-screen bg-bg-primary text-text-primary">
-      <div className="ambient-glow" aria-hidden="true" />
+    <div className="relative min-h-screen text-text-primary">
       <main className="relative z-10 mx-auto w-full max-w-md px-4 pb-[calc(var(--nav-h)+56px+16px)] pt-4">
         <InstallAppTutorial leading={tab === 'dashboard' ? <SyncStatusPill status={sync.syncStatus} /> : null} />
         {sync.error ? (
