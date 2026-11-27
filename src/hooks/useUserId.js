@@ -3,7 +3,7 @@ import { useState } from 'react'
 const USER_ID_STORAGE_KEY = 'wt_user_id'
 const USER_ID_PATTERN = /^[a-zA-Z0-9_-]{3,128}$/
 
-function isValidUserId(userId) {
+export function isValidUserId(userId) {
   return USER_ID_PATTERN.test(userId)
 }
 
@@ -51,6 +51,25 @@ function resolveUserId() {
   storeUserId(userId)
   replaceUrlUserId(userId)
   return userId
+}
+
+/** Extrait un code de compte valide d'un texte collé (code seul ou lien contenant ?id=). */
+export function normalizeUserId(raw) {
+  const text = String(raw ?? '').trim()
+  if (!text) return null
+  const match = text.match(/[?&]id=([^&#\s]+)/)
+  const candidate = match ? decodeURIComponent(match[1]) : text
+  return isValidUserId(candidate) ? candidate : null
+}
+
+/** Bascule l'app sur un autre compte (code) puis recharge. Retourne false si le code est invalide. */
+export function switchToUserId(raw) {
+  const userId = normalizeUserId(raw)
+  if (!userId) return false
+  storeUserId(userId)
+  replaceUrlUserId(userId)
+  window.location.reload()
+  return true
 }
 
 function useUserId() {

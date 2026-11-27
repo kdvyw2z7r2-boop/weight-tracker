@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import AccountCard from '../components/AccountCard'
 import ConfirmSheet from '../components/ConfirmSheet'
 import ExportButton from '../components/ExportButton'
 import NumberField from '../components/NumberField'
@@ -258,6 +259,8 @@ function SettingsScreen({ entriesApi, settings, updateSettings, onEditPlan }) {
           ) : null}
         </GlassCard>
       </div>
+
+      <AccountCard userId={entriesApi.userId} />
 
       <div className="animate-fade-up animate-stagger-4">
         <p className="section-label mb-2 px-1">Données</p>
