@@ -56,7 +56,7 @@ function DashboardScreen({ entries, settings, movingAverage, onEditPlan }) {
 
   const displayWeight = latest ? formatWeight(animatedWeight) : '—'
 
-  const deltaTone = delta === null ? 'badge-neon-neutral' : delta <= 0 ? 'badge-neon-green' : 'badge-neon-red'
+  const deltaTone = delta === null ? 'badge-tone-neutral' : delta <= 0 ? 'badge-tone-good' : 'badge-tone-bad'
   const monthTone = monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'text-good' : 'text-danger'
 
   return (
@@ -74,7 +74,7 @@ function DashboardScreen({ entries, settings, movingAverage, onEditPlan }) {
         </p>
         {entries.length > 0 ? (
           <div className="mt-3">
-            <span className={`badge-neon ${deltaTone}`}>{deltaLabel}</span>
+            <span className={`badge-tone ${deltaTone}`}>{deltaLabel}</span>
           </div>
         ) : null}
       </GlassCard>

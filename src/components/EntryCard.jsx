@@ -32,10 +32,10 @@ function EntryCard({
   const delta = previous ? entry.weight - previous.weight : null
   const deltaBadgeClass =
     delta === null
-      ? 'badge-neon badge-neon-neutral'
+      ? 'badge-tone badge-tone-neutral'
       : delta <= 0
-        ? 'badge-neon badge-neon-green'
-        : 'badge-neon badge-neon-red'
+        ? 'badge-tone badge-tone-good'
+        : 'badge-tone badge-tone-bad'
 
   return (
     <GlassCard

@@ -327,7 +327,7 @@ function App() {
       <main className="relative z-10 mx-auto w-full max-w-md px-4 pb-[calc(var(--nav-h)+56px+16px)] pt-4">
         <InstallAppTutorial leading={tab === 'dashboard' ? <SyncStatusPill status={sync.syncStatus} /> : null} />
         {sync.error ? (
-          <div className="mb-3 rounded-2xl border border-accent-red/20 bg-accent-red/10 px-4 py-3 text-[13px] leading-relaxed text-accent-red">
+          <div className="mb-3 rounded-2xl border border-danger/20 bg-danger/10 px-4 py-3 text-[13px] leading-relaxed text-danger">
             {sync.error}
           </div>
         ) : null}
