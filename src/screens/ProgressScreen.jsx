@@ -24,6 +24,7 @@ import {
 } from '../utils/weightPlan'
 import { formatPace, formatWeightWithUnit } from '../utils/format'
 import MeasurementsCard from '../components/measurements/MeasurementsCard'
+import BadgesShowcase from '../components/badges/BadgesShowcase'
 
 const PERIODS = [
   { key: '1m', label: '1 mois', days: 30 },
@@ -45,6 +46,7 @@ function ProgressScreen({
   measurements = [],
   onSaveMeasurement,
   onDeleteMeasurements,
+  badges = null,
 }) {
   const [period, setPeriod] = useState('all')
 
@@ -272,6 +274,9 @@ function ProgressScreen({
           onDeleteMany={onDeleteMeasurements}
         />
       ) : null}
+
+      {/* Badges */}
+      {badges ? <BadgesShowcase badges={badges} /> : null}
     </section>
   )
 }
