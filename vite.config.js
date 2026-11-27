@@ -15,8 +15,8 @@ export default defineConfig({
         name: 'Suivi de poids',
         short_name: 'Poids',
         description: 'Suivi de poids personnel',
-        theme_color: '#05070f',
-        background_color: '#05070f',
+        theme_color: '#0c0907',
+        background_color: '#0c0907',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
