@@ -22,13 +22,13 @@ function CustomTooltip({ active, payload, unit }) {
   if (!point) return null
 
   return (
-    <div className="rounded-xl border border-border bg-bg-card px-3 py-2 shadow-lg">
-      <p className="text-[12px] text-text-tertiary">{point.date}</p>
+    <div className="glass-strong !rounded-xl px-3 py-2">
+      <p className="text-[12px] text-text-secondary">{point.date}</p>
       <p className="mt-0.5 text-sm font-semibold text-text-primary">
         {formatWeightWithUnit(point.weight, unit)}
       </p>
       {point.avg ? (
-        <p className="mt-0.5 text-[12px] text-accent-green">Moy. : {formatWeightWithUnit(point.avg, unit)}</p>
+        <p className="mt-0.5 text-[12px] text-avg">Moy. : {formatWeightWithUnit(point.avg, unit)}</p>
       ) : null}
       {point.projected ? (
         <p className="mt-0.5 text-[12px] text-plan">Projection plan</p>
@@ -86,7 +86,7 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
 
   if (!chartData.length) {
     return (
-      <div className="flex h-64 items-center justify-center text-[14px] text-text-tertiary">
+      <div className="flex h-64 items-center justify-center text-[14px] text-text-secondary">
         Pas encore de données pour cette période
       </div>
     )
@@ -105,11 +105,11 @@ function WeightChart({ data, movingAverage, targetWeight, unit = 'kg', plan = nu
         <ComposedChart data={chartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={C.weight} stopOpacity={0.25} />
+              <stop offset="0%" stopColor={C.weight} stopOpacity={0.18} />
               <stop offset="100%" stopColor={C.weight} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+          <CartesianGrid strokeDasharray="2 4" stroke={C.grid} vertical={false} />
           <XAxis
             dataKey="label"
             stroke={C.axis}

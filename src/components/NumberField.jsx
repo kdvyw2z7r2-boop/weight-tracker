@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { resolveCommit } from '../utils/number'
 
 const inputClass =
-  'h-12 w-full rounded-xl border border-transparent bg-bg-card px-4 text-base text-white outline-none transition duration-200 focus:border-white/20'
+  'glass-field h-12 w-full px-4 text-base'
 
 function NumberField({ label, value, min, max, decimals, format, onCommit }) {
   const id = useId()

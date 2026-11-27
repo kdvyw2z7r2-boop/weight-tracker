@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import { useEffect, useRef, useState } from 'react'
+import GlassButton from './ui/GlassButton'
 import PhotoCropModal from './PhotoCropModal'
 import usePhotoCrop from '../hooks/usePhotoCrop'
 import { PHOTO_LIBRARY_ACCEPT } from '../utils/photo'
@@ -157,42 +158,38 @@ function AddWeightModal({
         type="button"
         aria-label="Fermer"
         onClick={handleClose}
-        className={`absolute inset-0 bg-black/75 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${
           visible ? 'opacity-100' : 'opacity-0'
         }`}
       />
       <form
         onSubmit={handleSubmit}
-        className={`relative w-full max-w-md rounded-t-[24px] border-t border-border bg-bg-card px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.5)] transition-transform duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={`glass-strong relative max-h-[94dvh] w-full max-w-md overflow-y-auto !rounded-b-none px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 transition-transform duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${
           visible ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
-        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-bg-elevated" aria-hidden="true" />
-        <h2 className="text-center text-lg font-semibold">Nouvelle pesée</h2>
+        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/30" aria-hidden="true" />
+        <h2 className="text-center text-[17px] font-semibold text-text-primary">Nouvelle pesée</h2>
 
         <div className="mt-6">
           <p className="section-label mb-3 text-center">Photo du jour (optionnelle)</p>
           {!isSupabaseConfigured ? (
-            <p className="mb-3 text-center text-[12px] leading-relaxed text-text-tertiary">
+            <p className="mb-3 text-center text-[12px] leading-relaxed text-text-secondary">
               Photos indisponibles hors connexion au cloud.
             </p>
           ) : null}
           {hasPendingImage ? (
             <div className="mx-auto w-[180px] space-y-3">
-              <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+              <div className="relative aspect-[9/16] overflow-hidden glass-sm bg-white/5">
                 <img src={pendingImageUrl} alt="Aperçu photo" className="h-full w-full object-contain" />
               </div>
-              <p className="text-center text-[12px] text-text-tertiary">
+              <p className="text-center text-[12px] text-text-secondary">
                 Ajustez le cadrage avant d&apos;enregistrer
               </p>
-              <button
-                type="button"
-                onClick={openCrop}
-                className="btn-primary h-11 w-full rounded-[14px] text-[14px]"
-              >
+              <GlassButton onClick={openCrop} className="w-full">
                 Recadrer
-              </button>
-              <label className="press-button relative flex h-10 w-full cursor-pointer items-center justify-center rounded-xl bg-bg-elevated text-[13px] font-medium text-text-secondary">
+              </GlassButton>
+              <label className="press-button glass-pill relative flex h-11 w-full cursor-pointer items-center justify-center text-[14px] font-semibold text-text-primary">
                 Changer de photo
                 <input
                   type="file"
@@ -206,18 +203,18 @@ function AddWeightModal({
               <button
                 type="button"
                 onClick={clearPending}
-                className="press-button h-10 w-full rounded-xl text-[13px] font-medium text-text-secondary"
+                className="press-button h-11 w-full rounded-full text-[14px] font-semibold text-text-secondary"
               >
                 Annuler
               </button>
             </div>
           ) : displayPreview ? (
             <div className="mx-auto w-[180px]">
-              <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+              <div className="relative aspect-[9/16] overflow-hidden glass-sm bg-white/5">
                 <img src={displayPreview} alt="Aperçu photo" className="h-full w-full object-cover" />
               </div>
               <div className="mt-3 flex gap-2">
-                <label className="press-button relative flex flex-1 cursor-pointer items-center justify-center rounded-xl bg-bg-elevated py-2.5 text-[13px] font-medium text-text-secondary">
+                <label className="press-button glass-pill relative flex h-11 flex-1 cursor-pointer items-center justify-center text-[14px] font-semibold text-text-primary">
                   Changer
                   <input
                     type="file"
@@ -232,20 +229,20 @@ function AddWeightModal({
                   <button
                     type="button"
                     onClick={handleRemovePhoto}
-                    className="press-button rounded-xl bg-accent-red/15 px-4 py-2.5 text-[13px] font-medium text-accent-red"
+                    className="press-button btn-glass-danger h-11 px-4 text-[14px]"
                   >
                     Supprimer
                   </button>
                 ) : null}
               </div>
               {hasExistingPhoto && !photoBlob ? (
-                <p className="mt-2 text-center text-[12px] text-text-tertiary">
+                <p className="mt-2 text-center text-[12px] text-text-secondary">
                   Photo du jour déjà enregistrée — reprenez pour la remplacer.
                 </p>
               ) : null}
             </div>
           ) : (
-            <label className="press-button relative mx-auto flex aspect-[9/16] w-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-bg-elevated text-text-tertiary transition hover:border-white/25 hover:text-text-secondary">
+            <label className="press-button relative mx-auto flex aspect-[9/16] w-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border border-dashed border-white/25 bg-white/5 text-text-secondary">
               <CameraIcon className="h-8 w-8" />
               <span className="text-[13px] font-medium">Choisir une photo</span>
               <input
@@ -268,10 +265,10 @@ function AddWeightModal({
             inputMode="decimal"
             step="0.01"
             placeholder="0,0"
-            className="w-full border-b border-border bg-transparent py-2 text-center text-[48px] font-bold leading-none text-white outline-none transition-colors duration-200 placeholder:text-text-tertiary focus:border-white/30"
+            className="w-full border-b border-white/20 bg-transparent py-2 text-center text-[64px] font-extralight leading-none tracking-[-0.04em] tabular-nums text-text-primary outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none transition-colors duration-200 placeholder:text-text-secondary focus:border-accent"
             required
           />
-          <p className="mt-2 text-center text-[13px] text-text-tertiary">{unit}</p>
+          <p className="mt-2 text-center text-[15px] font-medium text-text-secondary">{unit}</p>
         </div>
 
         <div className="mt-8 space-y-4">
@@ -281,7 +278,7 @@ function AddWeightModal({
               value={date}
               onChange={(event) => setDate(event.target.value)}
               type="date"
-              className="h-12 w-full rounded-xl border border-transparent bg-bg-elevated px-4 text-[15px] text-white outline-none transition duration-200 focus:border-white/20"
+              className="glass-field h-12 w-full px-4 text-[15px]"
               required
             />
           </div>
@@ -291,20 +288,16 @@ function AddWeightModal({
               value={note}
               onChange={(event) => setNote(event.target.value.slice(0, 200))}
               placeholder="Ajouter une note (optionnel)"
-              className="h-24 w-full resize-none rounded-xl border border-transparent bg-bg-elevated px-4 py-3 text-[15px] leading-relaxed text-white outline-none transition duration-200 placeholder:text-text-tertiary focus:border-white/20"
+              className="glass-field h-24 w-full resize-none px-4 py-3 text-[15px] leading-relaxed placeholder:text-text-secondary"
             />
           </div>
         </div>
 
-        {error ? <p className="mt-3 text-sm text-accent-red">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
 
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="btn-primary mt-6 h-[52px] w-full rounded-[14px] text-base font-medium disabled:cursor-not-allowed disabled:opacity-40"
-        >
+        <GlassButton type="submit" size="lg" disabled={!canSubmit} className="mt-6 w-full disabled:cursor-not-allowed disabled:opacity-40">
           {isSaving ? 'Enregistrement…' : 'Enregistrer'}
-        </button>
+        </GlassButton>
       </form>
     </div>
       <PhotoCropModal

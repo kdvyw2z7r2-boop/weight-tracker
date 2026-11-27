@@ -16,9 +16,9 @@ function PillSelector({ options, value, onChange }) {
   }, [value, options])
 
   return (
-    <div ref={containerRef} className="relative inline-flex flex-wrap gap-1 rounded-[20px] bg-bg-elevated/60 p-1">
+    <div ref={containerRef} className="glass-track relative inline-flex flex-wrap gap-1">
       <span
-        className="absolute top-1 bottom-1 rounded-[18px] bg-white transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+        className="glass-segment-active absolute top-[3px] bottom-[3px] rounded-full transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
         style={{ left: indicator.left, width: indicator.width }}
         aria-hidden="true"
       />
@@ -32,8 +32,8 @@ function PillSelector({ options, value, onChange }) {
             }}
             type="button"
             onClick={() => onChange(option.key)}
-            className={`press-button relative z-10 rounded-[18px] px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-200 ${
-              active ? 'text-black' : 'text-text-tertiary hover:text-text-secondary'
+            className={`press-button relative z-10 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors duration-200 ${
+              active ? 'text-text-primary' : 'text-text-secondary'
             }`}
           >
             {option.label}

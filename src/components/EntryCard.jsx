@@ -1,3 +1,4 @@
+import GlassCard from './ui/GlassCard'
 import { formatDateEntry } from '../utils/locale'
 import { formatWeight, formatWeightWithUnit } from '../utils/format'
 
@@ -5,7 +6,7 @@ function CameraIcon({ active = false }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className={`h-5 w-5 fill-none ${active ? 'text-white' : 'text-text-tertiary'}`}
+      className={`h-5 w-5 fill-none ${active ? 'text-accent' : 'text-text-secondary'}`}
       stroke="currentColor"
       strokeWidth="1.75"
     >
@@ -37,17 +38,16 @@ function EntryCard({
         : 'badge-neon badge-neon-red'
 
   return (
-    <article
-      className="press-card animate-fade-up relative rounded-2xl border border-border bg-bg-card px-5 py-4"
+    <GlassCard
+      as="article"
+      className="press-card animate-fade-up px-5 py-4"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      <div className="absolute right-1 top-1 flex items-center">
+      <div className="absolute right-2 top-2 flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => onPhotoPress?.(entry)}
-          className={`press-button flex h-11 w-11 items-center justify-center rounded-lg transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent-blue ${
-            hasPhoto ? 'text-white hover:bg-bg-elevated' : 'text-text-tertiary hover:text-text-secondary'
-          }`}
+          className="press-button glass-icon-btn focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
           aria-label={`${hasPhoto ? 'Voir la photo du' : 'Ajouter une photo du'} ${dateLabel}`}
         >
           <CameraIcon active={hasPhoto} />
@@ -55,7 +55,7 @@ function EntryCard({
         <button
           type="button"
           onClick={() => onDelete(entry.id)}
-          className="press-button flex h-11 w-11 items-center justify-center rounded-lg text-text-tertiary transition duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent-blue"
+          className="press-button glass-icon-btn focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
           aria-label={`Supprimer la pesée du ${dateLabel}`}
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none" stroke="currentColor" strokeWidth="1.75">
@@ -67,11 +67,11 @@ function EntryCard({
         </button>
       </div>
 
-      <div className="flex items-end justify-between pr-24">
+      <div className="flex items-end justify-between pr-28">
         <div>
-          <p className="text-[12px] font-medium tracking-wide uppercase text-text-tertiary">{dateLabel}</p>
-          <p className="mt-1 whitespace-nowrap text-[24px] font-black leading-tight tabular-nums text-white" style={{ letterSpacing: '-1px' }}>
-            {formatWeight(entry.weight)}{"\u00A0"}<span className="text-[14px] font-bold text-text-tertiary">{unit}</span>
+          <p className="text-[13px] font-medium capitalize text-text-secondary">{dateLabel}</p>
+          <p className="mt-1 whitespace-nowrap text-[28px] font-light leading-tight tracking-[-0.03em] tabular-nums text-text-primary">
+            {formatWeight(entry.weight)}{"\u00A0"}<span className="text-[15px] font-medium tracking-normal text-text-secondary">{unit}</span>
           </p>
         </div>
         <div className="text-right">
@@ -83,8 +83,8 @@ function EntryCard({
         </div>
       </div>
 
-      {entry.note ? <p className="mt-3 text-[13px] italic text-text-tertiary">{entry.note}</p> : null}
-    </article>
+      {entry.note ? <p className="mt-3 text-[14px] text-text-secondary">{entry.note}</p> : null}
+    </GlassCard>
   )
 }
 

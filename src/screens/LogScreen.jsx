@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import GlassButton from '../components/ui/GlassButton'
+import GlassCard from '../components/ui/GlassCard'
 import EntryCard from '../components/EntryCard'
 import usePendingDelete from '../hooks/usePendingDelete'
 import { useToast } from '../hooks/useToast'
@@ -36,28 +38,26 @@ function LogScreen({ entries, deleteEntries, onAdd, onPhotoPress, hasPhotoForDat
     <section className="space-y-4">
       <div className="animate-fade-up flex items-center justify-between">
         <div>
-          <h2 className="text-[20px] font-black uppercase tracking-tight neon-text-cyan">Journal</h2>
-          <p className="mt-0.5 text-[13px] text-text-tertiary">
+          <h2 className="text-[28px] font-bold leading-tight tracking-[-0.02em] text-text-primary">Journal</h2>
+          <p className="mt-0.5 text-[13px] font-medium text-text-secondary">
             {visibleEntries.length} entrée{visibleEntries.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button type="button" onClick={onAdd} className="btn-primary h-10 px-5 text-[13px] font-bold tracking-wide">
-          + Ajouter
-        </button>
+        <GlassButton onClick={onAdd}>+ Ajouter</GlassButton>
       </div>
 
       {!visibleEntries.length ? (
-        <div className="card-base animate-fade-up animate-stagger-1 flex flex-col items-center py-12 text-center">
-          <div className="empty-state-icon animate-float mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl">
+        <GlassCard className="animate-fade-up animate-stagger-1 flex flex-col items-center px-5 py-12 text-center">
+          <div className="glass-sm mb-4 flex h-14 w-14 items-center justify-center text-2xl" aria-hidden="true">
             📋
           </div>
-          <p className="font-medium text-text-primary">Aucune entrée</p>
-          <p className="mt-2 text-[14px] text-text-tertiary">Vos pesées apparaîtront ici.</p>
-        </div>
+          <p className="text-[17px] font-semibold text-text-primary">Aucune entrée</p>
+          <p className="mt-2 text-[14px] text-text-secondary">Vos pesées apparaîtront ici.</p>
+        </GlassCard>
       ) : (
         Object.entries(grouped).map(([month, monthEntries], groupIndex) => (
-          <div key={month} className="space-y-3">
-            <h3 className="section-label animate-fade-up" style={{ animationDelay: `${groupIndex * 80}ms` }}>
+          <div key={month} className="space-y-2">
+            <h3 className="section-label animate-fade-up px-2 pt-1 capitalize" style={{ animationDelay: `${groupIndex * 80}ms` }}>
               {formatMonthYear(month)}
             </h3>
             {monthEntries.map((entry, index) => (
