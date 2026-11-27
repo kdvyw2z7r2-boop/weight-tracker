@@ -87,3 +87,12 @@
 - [ ] Supprimer de `index.css` toutes les classes et animations néon devenues inutiles (`neon-text-*`, `badge-neon*`, `card-electric`, `card-glow`, `hero-weight-gradient`, `ambient-glow`, `animate-float`, glows) et les anciens tokens d'alias non utilisés.
 - [ ] `grep -rnE "neon|card-electric|card-glow|hero-weight-gradient|ambient-glow|accent-(blue|purple|pink)" src` → vide (ou justifié).
 - [ ] Captures finales des 5 onglets + 3 feuilles ; `npm test && npm run lint && npm run build` ; commit `style(glass): nettoyage néon`.
+
+### Task 8: Logo et icônes
+
+**Files:** Modify `public/favicon.svg` (remplacé par le logo), `scripts/generate-icons.cjs`, `vite.config.js` (manifest `theme_color`/`background_color` = `#05070f`), `index.html` (`<meta name="theme-color" content="#05070f">`), regénérer `public/icons/*`.
+
+- [ ] **Step 1:** Source du logo validé : `docs/superpowers/assets/logo-liquid-glass.svg` (512×512, plein cadre : fond nuit + halos, disque de verre, anneau de progression bleu, courbe descendante blanche, point vert). Le copier en `public/favicon.svg`.
+- [ ] **Step 2:** Adapter `generate-icons.cjs` : le logo est déjà plein cadre → `icon-192/512` et `apple-touch-icon` à `scale: 1` sans fond ; `maskable-512` à `scale: 1` (le contenu utile tient dans le cercle sûr de 80 %) ; `badge-96` = silhouette blanche monochrome de l'anneau + courbe uniquement (créer `public/badge.svg` dédié, fond transparent, car la silhouette d'un logo plein cadre serait un carré blanc).
+- [ ] **Step 3:** `node scripts/generate-icons.cjs` ; vérifier visuellement chaque PNG (Read) ; `npm run build` → `dist/manifest.webmanifest` correct.
+- [ ] **Step 4:** Commit `feat(brand): logo Liquid Glass et icônes`.
