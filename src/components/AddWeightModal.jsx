@@ -47,9 +47,7 @@ function AddWeightModal({
 
   const existingPhotoUrl = getPhotoForDate?.(date)?.url ?? null
   const hasExistingPhoto = Boolean(existingPhotoUrl)
-  const photoRequired = isSupabaseConfigured
-  const hasPhoto = Boolean(photoBlob || hasExistingPhoto)
-  const canSubmit = (!photoRequired || hasPhoto) && !hasPendingImage && !isCropOpen && !isSaving
+  const canSubmit = !hasPendingImage && !isCropOpen && !isSaving
 
   useEffect(() => {
     if (isOpen) {
@@ -135,11 +133,6 @@ function AddWeightModal({
       return
     }
 
-    if (photoRequired && !hasPhoto) {
-      setError('Une photo est obligatoire pour enregistrer la pesée.')
-      return
-    }
-
     try {
       await onSave({ weight: parsedWeight, date, note }, photoBlob)
       setWeight('')
@@ -177,7 +170,7 @@ function AddWeightModal({
         <h2 className="text-center text-lg font-semibold">Nouvelle pesée</h2>
 
         <div className="mt-6">
-          <p className="section-label mb-3 text-center">Photo du jour</p>
+          <p className="section-label mb-3 text-center">Photo du jour (optionnelle)</p>
           {!isSupabaseConfigured ? (
             <p className="mb-3 text-center text-[12px] leading-relaxed text-text-tertiary">
               Photos indisponibles hors connexion au cloud.

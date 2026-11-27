@@ -672,11 +672,6 @@ function useSync(userId) {
   const addEntry = useCallback(
     async (entry, photoBlobArg = null) => {
       const photoBlob = photoBlobArg ?? entry.photoBlob ?? null
-      const photoRequired = Boolean(db)
-
-      if (photoRequired && !photoBlob && !photosByDate[entry.date]?.storagePath) {
-        throw new Error('Une photo est obligatoire pour enregistrer la pesée.')
-      }
 
       if (photoBlob) {
         await uploadDailyPhoto(entry.date, photoBlob)
@@ -684,7 +679,7 @@ function useSync(userId) {
 
       await persist([...entries, createEntry(entry)], settings)
     },
-    [entries, settings, persist, uploadDailyPhoto, photosByDate, db],
+    [entries, settings, persist, uploadDailyPhoto],
   )
 
   const updateEntry = useCallback(
