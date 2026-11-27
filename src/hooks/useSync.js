@@ -374,6 +374,9 @@ function useSync(userId) {
   const [entries, setEntries] = useState([])
   const [settings, setSettings] = useState(defaultSettings)
   const [photosByDate, setPhotosByDate] = useState({})
+  // Source de vérité synchrone des photos : mise à jour en même temps que l'état (pas d'effet),
+  // pour que deux opérations enchaînées (envoi puis persist) ne repartent pas d'une table périmée.
+  const photosRef = useRef(photosByDate)
   const [isLoading, setIsLoading] = useState(Boolean(userId))
   const [hasLoaded, setHasLoaded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -508,6 +511,7 @@ function useSync(userId) {
 
         setEntries(mergedEntries)
         setSettings(finalSettings)
+        photosRef.current = mergedPhotos
         setPhotosByDate(mergedPhotos)
         setStorageMode(db ? 'supabase' : 'cloud')
         setSyncStatus('cloud')
@@ -519,6 +523,7 @@ function useSync(userId) {
         storeLocalPhotos(userId, fallback.photos)
         setEntries(fallback.entries)
         setSettings(fallback.settings)
+        photosRef.current = fallback.photos
         setPhotosByDate(fallback.photos)
         setStorageMode('local')
         setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
@@ -556,8 +561,20 @@ function useSync(userId) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [userId, loadData])
 
+  /** Applique une table de photos : ref (synchrone) + état + cache local. */
+  const commitPhotos = useCallback(
+    (next) => {
+      const normalized = normalizePhotosMap(next)
+      photosRef.current = normalized
+      setPhotosByDate(normalized)
+      if (userId) storeLocalPhotos(userId, normalized)
+      return normalized
+    },
+    [userId],
+  )
+
   const persist = useCallback(
-    async (nextEntries, nextSettings, nextPhotos = photosByDate, { restoreAdded = false } = {}) => {
+    async (nextEntries, nextSettings, nextPhotos, { restoreAdded = false } = {}) => {
       if (!userId) {
         setStorageMode('local')
         setSyncStatus(db ? 'local-offline' : 'local-unconfigured')
@@ -571,15 +588,14 @@ function useSync(userId) {
         { ...baseSettings, ...updateSyncMarkers(baseSettings, entries, sortedEntries, now, { restoreAdded }) },
         now,
       )
-      const normalizedPhotos = normalizePhotosMap(nextPhotos)
       const seq = ++persistSeqRef.current
 
       setEntries(sortedEntries)
       setSettings(normalizedSettings)
-      setPhotosByDate(normalizedPhotos)
+      // Sans table explicite : la table courante (ref), jamais celle capturée par la closure.
+      commitPhotos(nextPhotos ?? photosRef.current)
       storeLocalEntries(userId, sortedEntries)
       storeLocalSettings(userId, normalizedSettings)
-      storeLocalPhotos(userId, normalizedPhotos)
       beginSave()
       setError('')
 
@@ -601,7 +617,7 @@ function useSync(userId) {
         endSave()
       }
     },
-    [userId, db, photosByDate, entries, saveMerged, applyMerged, beginSave, endSave],
+    [userId, db, entries, saveMerged, applyMerged, beginSave, endSave, commitPhotos],
   )
 
   const uploadDailyPhoto = useCallback(
@@ -617,13 +633,7 @@ function useSync(userId) {
 
       try {
         const uploaded = await uploadPhotoToSupabase(db, userId, date, blob)
-        const nextPhotos = {
-          ...photosByDate,
-          [date]: uploaded,
-        }
-
-        setPhotosByDate(nextPhotos)
-        storeLocalPhotos(userId, nextPhotos)
+        commitPhotos({ ...photosRef.current, [date]: uploaded })
         setStorageMode('supabase')
         return uploaded
       } catch (uploadError) {
@@ -635,14 +645,14 @@ function useSync(userId) {
         setIsSaving(false)
       }
     },
-    [userId, db, photosByDate],
+    [userId, db, commitPhotos],
   )
 
   const deleteDailyPhoto = useCallback(
     async (date) => {
       if (!userId || !date) return
 
-      const existing = photosByDate[date]
+      const existing = photosRef.current[date]
       if (!existing) return
 
       if (!db) {
@@ -654,10 +664,9 @@ function useSync(userId) {
 
       try {
         await deletePhotoFromSupabase(db, userId, date, existing.storagePath)
-        const nextPhotos = { ...photosByDate }
+        const nextPhotos = { ...photosRef.current }
         delete nextPhotos[date]
-        setPhotosByDate(nextPhotos)
-        storeLocalPhotos(userId, nextPhotos)
+        commitPhotos(nextPhotos)
         setStorageMode('supabase')
       } catch (deleteError) {
         setStorageMode('local')
@@ -667,18 +676,21 @@ function useSync(userId) {
         setIsSaving(false)
       }
     },
-    [userId, db, photosByDate],
+    [userId, db, commitPhotos],
   )
 
   const addEntry = useCallback(
     async (entry, photoBlobArg = null) => {
       const photoBlob = photoBlobArg ?? entry.photoBlob ?? null
 
+      let nextPhotos
       if (photoBlob) {
-        await uploadDailyPhoto(entry.date, photoBlob)
+        const uploaded = await uploadDailyPhoto(entry.date, photoBlob)
+        // Table incluant la photo envoyée, passée explicitement (pas de table périmée).
+        nextPhotos = uploaded ? { ...photosRef.current, [entry.date]: uploaded } : undefined
       }
 
-      await persist([...entries, createEntry(entry)], settings)
+      await persist([...entries, createEntry(entry)], settings, nextPhotos)
     },
     [entries, settings, persist, uploadDailyPhoto],
   )
@@ -713,12 +725,12 @@ function useSync(userId) {
   )
 
   const clearAllData = useCallback(async () => {
-    if (db && Object.keys(photosByDate).length) {
-      await deleteAllPhotosFromSupabase(db, userId, photosByDate)
+    const currentPhotos = photosRef.current
+    if (db && Object.keys(currentPhotos).length) {
+      await deleteAllPhotosFromSupabase(db, userId, currentPhotos)
     }
 
-    setPhotosByDate({})
-    storeLocalPhotos(userId, {})
+    commitPhotos({})
     // Réglages par défaut, mais on garde les marqueurs de synchro (sinon les suppressions seraient perdues).
     await persist(
       [],
@@ -729,7 +741,7 @@ function useSync(userId) {
     // La clé des réglages est conservée : elle porte les tombstones jusqu'à leur synchro.
     removeFromStorage(getLocalEntriesKey(userId))
     removeFromStorage(getLocalPhotosKey(userId))
-  }, [persist, photosByDate, userId, db, settings])
+  }, [persist, userId, db, settings, commitPhotos])
 
   const clearEntries = useCallback(async () => {
     await clearAllData()
@@ -752,11 +764,6 @@ function useSync(userId) {
     [photosByDate],
   )
 
-  const photosRef = useRef(photosByDate)
-  useEffect(() => {
-    photosRef.current = photosByDate
-  }, [photosByDate])
-
   // Re-signe les URLs des photos (sans écran de chargement). Appels concurrents mutualisés ;
   // résout avec la table à jour, utilisable immédiatement (sans attendre le rendu).
   const refreshFlightRef = useRef(null)
@@ -772,11 +779,9 @@ function useSync(userId) {
           fresh[date]?.storagePath === photo.storagePath && fresh[date].url ? { ...photo, url: fresh[date].url } : photo,
         ]),
       )
-      photosRef.current = merged
-      setPhotosByDate(merged)
-      return merged
+      return commitPhotos(merged)
     })
-  }, [db])
+  }, [db, commitPhotos])
   const refreshPhotoUrls = useCallback(() => refreshFlightRef.current(), [])
 
   const getPhotoForDate = useCallback((date) => photosByDate[date] ?? null, [photosByDate])
@@ -812,12 +817,12 @@ function useSync(userId) {
         throw new Error('Invalid backup format')
       }
       const nextSettings = parsed.settings ? mergeSettings(settings, parsed.settings) : settings
-      const nextPhotos = parsed.photosByDate ? normalizePhotosMap(parsed.photosByDate) : photosByDate
+      const nextPhotos = parsed.photosByDate ? normalizePhotosMap(parsed.photosByDate) : undefined
       // restoreAdded : les ids importés absents d'ici sont restaurés, même si leur tombstone n'est que dans le cloud.
       await persist(mergeEntries([], normalizeEntries(parsed.entries)), nextSettings, nextPhotos, { restoreAdded: true })
       return parsed
     },
-    [persist, settings, photosByDate],
+    [persist, settings],
   )
 
   const convertAllUnits = useCallback(
