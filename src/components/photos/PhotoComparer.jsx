@@ -4,7 +4,7 @@ import { formatDateCompact } from '../../utils/locale'
 
 // Largeur plafonnée (hauteur max min(62vh,560px) x 9/16) : le cadre reste exactement 9:16.
 const FRAME =
-  'relative aspect-[9/16] w-full max-w-[min(34.875vh,315px)] justify-self-center mx-auto overflow-hidden rounded-[16px] bg-bg-elevated'
+  'relative aspect-[9/16] w-full max-w-[min(34.875vh,315px)] justify-self-center mx-auto overflow-hidden rounded-[16px] bg-white/5'
 const MAX_H = 'max-h-[min(62vh,560px)]'
 
 function PhotoImage({ photo, ...props }) {
@@ -17,7 +17,7 @@ function PhotoImageInner({ photo, onImageError, onRetryUrl, className = '' }) {
   if (!photo.url || failed) {
     return (
       <div
-        className={`absolute inset-0 flex flex-col items-center justify-center gap-2 bg-bg-elevated ${className}`}
+        className={`absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/5 ${className}`}
       >
         {photo.url || onRetryUrl ? (
           <button
@@ -31,7 +31,7 @@ function PhotoImageInner({ photo, onImageError, onRetryUrl, className = '' }) {
                 onRetryUrl()
               }
             }}
-            className="press-button min-h-[44px] rounded-full bg-white/10 px-4 text-[12px] font-medium text-text-secondary"
+            className="press-button min-h-[44px] rounded-full border border-white/15 bg-white/10 px-4 text-[13px] font-semibold text-text-primary"
           >
             Réessayer
           </button>
@@ -60,16 +60,19 @@ function Label({ children, align = 'left' }) {
     <span
       className={`pointer-events-none absolute bottom-2 ${
         align === 'left' ? 'left-2' : 'right-2'
-      } rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white`}
+      } ${DARK_PILL} px-2.5 py-1 text-[11px] font-semibold`}
     >
       {children}
     </span>
   )
 }
 
+// Pastille « verre sombre » (étiquettes posées sur la photo).
+const DARK_PILL = 'rounded-full border border-white/15 bg-black/55 text-text-primary backdrop-blur-md'
+
 const SLOT_TONES = {
-  before: 'bg-accent-blue text-bg-primary',
-  after: 'bg-accent-purple text-white',
+  before: 'border border-transparent bg-text-primary text-bg-primary',
+  after: 'border border-transparent bg-accent text-bg-primary',
 }
 
 /**
@@ -82,12 +85,12 @@ function CornerLabels({ before, after, slots, afterOffset = '' }) {
     { key: 'before', text: `Avant · ${formatDateCompact(before.date)}`, pos: 'top-0 left-0 items-start justify-start' },
     { key: 'after', text: `Après · ${formatDateCompact(after.date)}`, pos: `${afterOffset || 'bottom-0'} right-0 items-end justify-end` },
   ]
-  const pill = 'block min-w-0 truncate rounded-full px-2.5 py-1 text-[11px] font-medium'
+  const pill = 'block min-w-0 truncate rounded-full px-2.5 py-1 text-[11px] font-semibold'
 
   if (!slots) {
     return items.map((item) => (
       <span key={item.key} className={`pointer-events-none absolute flex max-w-full p-2 ${item.pos}`}>
-        <span className={`${pill} bg-black/60 text-white`}>{item.text}</span>
+        <span className={`${pill} ${DARK_PILL}`}>{item.text}</span>
       </span>
     ))
   }
@@ -103,9 +106,9 @@ function CornerLabels({ before, after, slots, afterOffset = '' }) {
             role="radio"
             aria-checked={active}
             onClick={() => slots.onChange(item.key)}
-            className={`pointer-events-auto absolute flex min-h-[44px] max-w-full p-2 outline-none focus-visible:[&>span]:ring-2 focus-visible:[&>span]:ring-white ${item.pos}`}
+            className={`pointer-events-auto absolute flex min-h-[44px] max-w-full p-2 outline-none focus-visible:[&>span]:ring-2 focus-visible:[&>span]:ring-accent ${item.pos}`}
           >
-            <span className={`${pill} ${active ? `${SLOT_TONES[item.key]} font-semibold` : 'bg-black/60 text-white'}`}>
+            <span className={`${pill} ${active ? SLOT_TONES[item.key] : DARK_PILL}`}>
               {item.text}
             </span>
           </button>
@@ -118,7 +121,7 @@ function CornerLabels({ before, after, slots, afterOffset = '' }) {
 function EmptyAfter() {
   return (
     <div
-      className={`${FRAME} ${MAX_H} flex items-center justify-center border border-dashed border-border p-3 text-center`}
+      className={`${FRAME} ${MAX_H} flex items-center justify-center border border-dashed border-white/25 p-3 text-center`}
     >
       <p className="text-[13px] text-text-secondary">Reviens dans quelques jours</p>
     </div>
@@ -160,6 +163,12 @@ function Curtain({ before, after, slots, onImageError, onRetryUrl }) {
       <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${percent}%)` }}>
         <PhotoImage photo={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
       </div>
+      {/* Filet exactement sur le bord du clip ; seule la poignée (et sa zone tactile) est bornée. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-white/90 ring-1 ring-black/25"
+        style={{ left: `${percent}%` }}
+      />
       <div
         role="slider"
         tabIndex={0}
@@ -172,11 +181,10 @@ function Curtain({ before, after, slots, onImageError, onRetryUrl }) {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onKeyDown={onKeyDown}
-        className="absolute inset-y-0 w-11 -translate-x-1/2 cursor-ew-resize touch-none outline-none focus-visible:[&>span:last-child]:ring-2 focus-visible:[&>span:last-child]:ring-accent-blue"
+        className="absolute inset-y-0 w-11 -translate-x-1/2 cursor-ew-resize touch-none outline-none focus-visible:[&>span]:ring-2 focus-visible:[&>span]:ring-accent"
         style={{ left: `clamp(22px, ${percent}%, calc(100% - 22px))` }}
       >
-        <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-white" />
-        <span className="absolute top-1/2 left-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[14px] text-black">
+        <span className="glass-pill absolute top-1/2 left-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[15px] text-text-primary">
           ↔
         </span>
       </div>
@@ -203,7 +211,7 @@ function Fade({ before, after, slots, onImageError, onRetryUrl }) {
           value={opacity}
           onChange={(event) => setOpacity(Number(event.target.value))}
           aria-label="Opacité de la photo après"
-          className="h-11 w-full accent-white"
+          className="h-11 w-full accent-accent"
         />
       </div>
       <CornerLabels before={before} after={after} slots={slots} afterOffset="bottom-10" />

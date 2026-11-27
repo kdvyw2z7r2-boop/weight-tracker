@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import PlanChart from './PlanChart'
+import GlassButton from './ui/GlassButton'
+import useDialogBasics from '../hooks/useDialogBasics'
 import {
   computeWeightPlan,
   getPaceRange,
@@ -10,6 +12,9 @@ function WeightPlanModal({ isOpen, onClose, onSave, onRemove, startWeight, targe
   const range = getPaceRange(unit)
   const initialPace = weeklyPace ?? range.defaultPace
   const [pace, setPace] = useState(initialPace)
+  const dialogRef = useRef(null)
+  const titleId = useId()
+  useDialogBasics({ open: isOpen, onClose, containerRef: dialogRef })
 
   const previewPlan = useMemo(
     () =>
@@ -43,95 +48,98 @@ function WeightPlanModal({ isOpen, onClose, onSave, onRemove, startWeight, targe
     onClose()
   }
 
+  const pacePercent = ((pace - paceMin) / (paceMax - paceMin)) * 100
+
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-bg-primary">
-      <header className="flex items-center justify-between px-4 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top,0px))]">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fermer"
-          className="press-button flex h-10 w-10 items-center justify-center rounded-full bg-bg-elevated text-lg text-text-secondary"
-        >
-          ✕
-        </button>
-        <h2 className="text-[17px] font-semibold">Planificateur de poids</h2>
-        <span className="w-10" aria-hidden="true" />
-      </header>
-
-      <div className="flex-1 overflow-y-auto px-4 pb-36">
-        <div className="card-base mt-2 overflow-hidden p-3">
-          <PlanChart plan={previewPlan} unit={unit} compact />
-        </div>
-
-        <div className="mt-8">
-          <h3 className="font-serif text-[22px] font-normal text-white">Définir votre rythme</h3>
-          <p className="mt-4 text-[15px] text-text-secondary">Je m&apos;engage à perdre</p>
-          <p className="mt-1 text-[32px] font-bold tabular-nums text-white">{formatPace(pace, unit)}</p>
-          <p className="mt-1 text-[13px] text-plan">Intervalle recommandé</p>
-
-          <div className="relative mt-8">
-            <div className="relative h-2 rounded-full bg-bg-elevated">
-              <div
-                className="absolute top-0 h-full rounded-full bg-plan/30"
-                style={{ left: `${recommendedLeft}%`, width: `${recommendedWidth}%` }}
-              />
-              <div
-                className="absolute top-0 h-full rounded-full bg-plan"
-                style={{ width: `${((pace - paceMin) / (paceMax - paceMin)) * 100}%` }}
-              />
-            </div>
-            <input
-              type="range"
-              min={paceMin}
-              max={paceMax}
-              step={range.step}
-              value={pace}
-              onChange={(event) => setPace(Number(event.target.value))}
-              className="absolute inset-0 h-2 w-full cursor-pointer opacity-0"
-              aria-label="Rythme hebdomadaire"
-            />
-            <div
-              className="pointer-events-none absolute top-1/2 h-7 w-7 -translate-y-1/2 rounded-full bg-white shadow-lg"
-              style={{ left: `calc(${((pace - paceMin) / (paceMax - paceMin)) * 100}% - 14px)` }}
-            />
-          </div>
-          <div className="mt-3 flex justify-between text-[12px] text-text-tertiary">
-            <span>{formatPace(paceMin, unit)}</span>
-            <span>{formatPace(paceMax, unit)}</span>
-          </div>
-
-          {previewPlan ? (
-            <div className="mt-6 rounded-2xl bg-bg-elevated/60 px-4 py-3 text-[13px] text-text-secondary">
-              <p>
-                Objectif de <span className="text-white">{formatWeightWithUnit(startWeight, unit)}</span> à{' '}
-                <span className="text-white">{formatWeightWithUnit(targetWeight, unit)}</span>
-              </p>
-              <p className="mt-1">
-                {previewPlan.checkpoints.length} point{previewPlan.checkpoints.length > 1 ? 's' : ''} de contrôle ·{' '}
-                {Math.round(previewPlan.totalWeeks)} semaines
-              </p>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-bg-primary/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-4 backdrop-blur-xl">
-        {weeklyPace != null ? (
-          <button
-            type="button"
-            onClick={handleRemove}
-            className="press-button mb-3 w-full text-[15px] font-medium text-accent-red"
-          >
-            Retirer le rythme de l&apos;objectif
+    <div className="fixed inset-0 z-40 flex flex-col bg-black/50 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="glass-strong animate-modal-sheet mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col !rounded-b-none"
+      >
+        <header className="flex items-center justify-between px-4 pb-2 pt-3">
+          <button type="button" onClick={onClose} aria-label="Fermer" className="press-button glass-icon-btn text-lg">
+            ✕
           </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={handleSave}
-          className="h-[52px] w-full rounded-[14px] bg-plan text-base font-semibold text-white transition active:opacity-80"
-        >
-          Enregistrer
-        </button>
+          <h2 id={titleId} className="text-[17px] font-semibold text-text-primary">
+            Planificateur de poids
+          </h2>
+          <span className="w-11" aria-hidden="true" />
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+          {/* Pas de verre imbriqué dans la feuille : simple surface translucide. */}
+          <div className="mt-2 overflow-hidden rounded-[20px] border border-white/10 bg-white/5 p-3">
+            <PlanChart plan={previewPlan} unit={unit} compact />
+          </div>
+
+          <div className="mt-8">
+            <h3 className="text-[22px] font-semibold tracking-[-0.01em] text-text-primary">Définir votre rythme</h3>
+            <p className="mt-4 text-[15px] text-text-secondary">Je m&apos;engage à perdre</p>
+            <p className="mt-1 text-[34px] font-semibold tracking-[-0.02em] tabular-nums text-text-primary">
+              {formatPace(pace, unit)}
+            </p>
+            <p className="mt-1 text-[13px] text-plan">Intervalle recommandé</p>
+
+            <div className="relative mt-5 flex h-11 items-center">
+              <div className="relative h-1.5 w-full rounded-full bg-track">
+                <div
+                  className="absolute top-0 h-full rounded-full bg-plan/35"
+                  style={{ left: `${recommendedLeft}%`, width: `${recommendedWidth}%` }}
+                />
+                <div className="absolute top-0 h-full rounded-full bg-accent" style={{ width: `${pacePercent}%` }} />
+              </div>
+              <input
+                type="range"
+                min={paceMin}
+                max={paceMax}
+                step={range.step}
+                value={pace}
+                onChange={(event) => setPace(Number(event.target.value))}
+                className="peer absolute inset-0 h-11 w-full cursor-pointer opacity-0"
+                aria-label="Rythme hebdomadaire"
+              />
+              <div
+                className="pointer-events-none absolute top-1/2 h-7 w-7 -translate-y-1/2 rounded-full border-2 border-accent bg-text-primary shadow-lg peer-focus-visible:ring-4 peer-focus-visible:ring-accent/40"
+                style={{ left: `calc(${pacePercent}% - 14px)` }}
+              />
+            </div>
+            <div className="mt-1 flex justify-between text-[12px] text-text-secondary">
+              <span>{formatPace(paceMin, unit)}</span>
+              <span>{formatPace(paceMax, unit)}</span>
+            </div>
+
+            {previewPlan ? (
+              <div className="mt-6 rounded-[18px] border border-white/10 bg-white/5 px-4 py-3 text-[13px] text-text-secondary">
+                <p>
+                  Objectif de <span className="text-text-primary">{formatWeightWithUnit(startWeight, unit)}</span> à{' '}
+                  <span className="text-text-primary">{formatWeightWithUnit(targetWeight, unit)}</span>
+                </p>
+                <p className="mt-1">
+                  {previewPlan.checkpoints.length} point{previewPlan.checkpoints.length > 1 ? 's' : ''} de contrôle ·{' '}
+                  {Math.round(previewPlan.totalWeeks)} semaines
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="border-t border-white/10 px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-4">
+          {weeklyPace != null ? (
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="press-button mb-2 min-h-11 w-full text-[15px] font-semibold text-danger"
+            >
+              Retirer le rythme de l&apos;objectif
+            </button>
+          ) : null}
+          <GlassButton size="lg" onClick={handleSave} className="w-full">
+            Enregistrer
+          </GlassButton>
+        </div>
       </div>
     </div>
   )

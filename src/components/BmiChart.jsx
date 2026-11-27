@@ -20,13 +20,13 @@ function BmiTooltip({ active, payload }) {
   if (!point) return null
 
   return (
-    <div className="rounded-xl border border-border bg-bg-card px-3 py-2 shadow-lg">
-      <p className="text-[12px] text-text-tertiary">{point.date}</p>
+    <div className="glass-strong !rounded-xl px-3 py-2">
+      <p className="text-[12px] text-text-secondary">{point.date}</p>
       <p className="mt-0.5 text-sm font-semibold text-text-primary">
         IMC : {String(point.bmi).replace('.', ',')}
       </p>
       {point.avg ? (
-        <p className="mt-0.5 text-[12px] text-accent-green">Moy. : {String(point.avg).replace('.', ',')}</p>
+        <p className="mt-0.5 text-[12px] text-good">Moy. : {String(point.avg).replace('.', ',')}</p>
       ) : null}
     </div>
   )
@@ -45,7 +45,7 @@ function BmiChart({ data, movingAverage = [] }) {
 
   if (!chartData.length) {
     return (
-      <div className="flex h-56 items-center justify-center text-[14px] text-text-tertiary">
+      <div className="flex h-56 items-center justify-center text-[14px] text-text-secondary">
         Pas encore de données pour cette période
       </div>
     )
@@ -84,7 +84,7 @@ function BmiChart({ data, movingAverage = [] }) {
             width={32}
             tickFormatter={(value) => value.toString().replace('.', ',')}
           />
-          <Tooltip content={<BmiTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)' }} />
+          <Tooltip content={<BmiTooltip />} cursor={{ stroke: C.grid }} />
           {BMI_ZONES.slice(1).map((zone) => (
             <ReferenceLine
               key={zone.label}

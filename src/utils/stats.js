@@ -4,10 +4,11 @@ import { toChartLabel } from './weightPlan'
 const LBS_TO_KG = 2.20462
 
 export const BMI_ZONES = [
-  { label: 'Maigreur', min: 0, max: 18.5, color: '#38BDF8' },
-  { label: 'Normal', min: 18.5, max: 25, color: '#4ADE80' },
-  { label: 'Surpoids', min: 25, max: 30, color: '#FBBF24' },
-  { label: 'Obésité', min: 30, max: 40, color: '#F87171' },
+  // Couleurs = tokens (index.css), adoucies dans la jauge.
+  { label: 'Maigreur', min: 0, max: 18.5, color: 'var(--color-plan)' },
+  { label: 'Normal', min: 18.5, max: 25, color: 'var(--color-good)' },
+  { label: 'Surpoids', min: 25, max: 30, color: 'var(--color-streak)' },
+  { label: 'Obésité', min: 30, max: 40, color: 'var(--color-danger)' },
 ]
 
 export const BMI_GAUGE_MAX = 40
@@ -92,10 +93,10 @@ export function getBmiCategory(bmi) {
   if (bmi == null || Number.isNaN(bmi)) {
     return { label: '--', colorClass: 'text-text-tertiary' }
   }
-  if (bmi < 18.5) return { label: 'Maigreur', colorClass: 'text-accent-blue' }
-  if (bmi < 25) return { label: 'Normal', colorClass: 'text-accent-green' }
-  if (bmi < 30) return { label: 'Surpoids', colorClass: 'text-orange-400' }
-  return { label: 'Obésité', colorClass: 'text-accent-red' }
+  if (bmi < 18.5) return { label: 'Maigreur', colorClass: 'text-plan' }
+  if (bmi < 25) return { label: 'Normal', colorClass: 'text-good' }
+  if (bmi < 30) return { label: 'Surpoids', colorClass: 'text-streak' }
+  return { label: 'Obésité', colorClass: 'text-danger' }
 }
 
 export function hasEntryOnDate(entries, dateStr) {

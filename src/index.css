@@ -222,6 +222,20 @@ body::before {
     border-radius: 999px;
   }
 
+  /* Surfaces secondaires (petites cartes, pastilles) : flou plus léger, moins coûteux sur mobile. */
+  .glass-sm,
+  .glass-pill {
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    backdrop-filter: blur(16px) saturate(150%);
+  }
+
+  /* Pastille active (raccourcis, filtres) : verre plus clair. */
+  .glass-pill.glass-pill-active {
+    background: rgba(255, 255, 255, 0.24);
+    border-color: rgba(255, 255, 255, 0.34);
+    color: var(--color-text-primary);
+  }
+
   /* Barre d'onglets flottante. */
   .glass-bar {
     border-radius: 28px;
@@ -577,6 +591,24 @@ body::before {
   }
 
   .glass-strong {
+    background: rgba(32, 23, 19, 0.97);
+  }
+}
+
+/* Transparence réduite demandée par le système : même verre opaque, sans flou. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-sm,
+  .glass-pill,
+  .card-base {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--glass-fallback);
+  }
+
+  .glass-strong {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     background: rgba(32, 23, 19, 0.97);
   }
 }

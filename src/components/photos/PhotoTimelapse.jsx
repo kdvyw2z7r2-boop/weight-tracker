@@ -8,7 +8,7 @@ import { FRAME_INTERVAL_MS, nextFrameIndex, prevFrameIndex } from '../../utils/t
 const PRELOAD_AHEAD = 2
 
 const ROUND_BUTTON =
-  'press-button flex h-12 min-w-12 items-center justify-center rounded-full bg-white/15 px-4 text-[15px] font-medium text-white disabled:opacity-40'
+  'press-button glass-pill flex h-12 min-w-12 items-center justify-center px-4 text-[15px] font-semibold text-text-primary disabled:opacity-40'
 
 /** Défilé plein écran des photos, du plus ancien au plus récent (4 images/s). */
 function PhotoTimelapse({ photos, unit = 'kg', onClose }) {
@@ -98,7 +98,7 @@ function PhotoTimelapse({ photos, unit = 'kg', onClose }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className="fixed inset-0 z-50 flex flex-col bg-black pt-[env(safe-area-inset-top)] pb-[calc(1rem+env(safe-area-inset-bottom))]"
+      className="fixed inset-0 z-50 flex flex-col bg-bg-primary pt-[env(safe-area-inset-top)] pb-[calc(1rem+env(safe-area-inset-bottom))]"
     >
       <h2 id={titleId} className="sr-only">
         Défilé des photos
@@ -124,7 +124,7 @@ function PhotoTimelapse({ photos, unit = 'kg', onClose }) {
             </div>
           </div>
         ) : (
-          <p className="text-[15px] text-white/70">Aucune photo à afficher.</p>
+          <p className="text-[15px] text-text-secondary">Aucune photo à afficher.</p>
         )}
       </div>
 
@@ -141,7 +141,7 @@ function PhotoTimelapse({ photos, unit = 'kg', onClose }) {
             setPlaying(false)
             setIndex(Number(event.target.value))
           }}
-          className="block h-11 w-full cursor-pointer accent-white"
+          className="block h-11 w-full cursor-pointer accent-accent"
         />
         <div className="flex items-center justify-center gap-3">
           <button

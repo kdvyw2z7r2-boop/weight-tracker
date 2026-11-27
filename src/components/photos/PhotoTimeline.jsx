@@ -13,7 +13,7 @@ function ThumbImage({ url, onFail }) {
   return (
     <>
       {!ready ? (
-        <span className="absolute inset-0 bg-bg-elevated motion-safe:animate-pulse" aria-hidden="true" />
+        <span className="absolute inset-0 bg-white/8 motion-safe:animate-pulse" aria-hidden="true" />
       ) : null}
       <img
         src={url}
@@ -50,8 +50,10 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, 
   }
 
   const dateLabel = formatDateCompact(photo.date)
+  // Vignette 56×100 : « … » occupe le coin haut-droit (44×44) ; ↻ passe alors sous lui, sans chevauchement.
+  const RETRY_POS = showOptions ? 'top-11' : 'top-[calc(50%-10px)] -translate-y-1/2'
   const ring =
-    slot === 'before' ? 'ring-2 ring-accent-blue' : slot === 'after' ? 'ring-2 ring-accent-purple' : 'ring-1 ring-border'
+    slot === 'before' ? 'ring-2 ring-text-primary' : slot === 'after' ? 'ring-2 ring-accent' : 'ring-1 ring-white/15'
   const slotLabel = slot === 'before' ? 'Avant' : slot === 'after' ? 'Après' : null
 
   return (
@@ -76,7 +78,7 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, 
         }}
         aria-pressed={Boolean(slot)}
         aria-label={`Photo du ${dateLabel}${slotLabel ? ` (${slotLabel.toLowerCase()})` : ''}`}
-        className={`press-button relative block aspect-[9/16] w-14 overflow-hidden rounded-xl bg-bg-elevated ${ring} [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-blue`}
+        className={`press-button relative block aspect-[9/16] w-14 overflow-hidden rounded-[14px] bg-white/5 ${ring} [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
       >
         {photo.url && !failed ? (
           <ThumbImage
@@ -91,7 +93,7 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, 
         {slotLabel ? (
           <span
             className={`pointer-events-none absolute inset-x-0 bottom-0 py-0.5 text-center text-[10px] font-bold ${
-              slot === 'before' ? 'bg-accent-blue text-bg-primary' : 'bg-accent-purple text-white'
+              slot === 'before' ? 'bg-text-primary text-bg-primary' : 'bg-accent text-bg-primary'
             }`}
           >
             {slotLabel}
@@ -103,7 +105,7 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, 
           type="button"
           onClick={() => onRetryUrl()}
           aria-label={`Réessayer de charger la photo du ${dateLabel}`}
-          className="press-button absolute left-1/2 top-[calc(50%-10px)] flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[18px] text-text-secondary"
+          className={`press-button absolute left-1/2 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full text-[18px] text-text-secondary ${RETRY_POS}`}
         >
           ↻
         </button>
@@ -118,7 +120,7 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, 
             onRetryUrl?.()
           }}
           aria-label={`Réessayer de charger la photo du ${dateLabel}`}
-          className="press-button absolute left-1/2 top-[calc(50%-10px)] flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[18px] text-text-secondary"
+          className={`press-button absolute left-1/2 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full text-[18px] text-text-secondary ${RETRY_POS}`}
         >
           ↻
         </button>
@@ -130,7 +132,7 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, 
           aria-label={`Options de la photo du ${dateLabel}`}
           className="press-button absolute right-0 top-0 flex h-11 w-11 items-start justify-end p-1"
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-[13px] font-bold leading-none text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-black/60 text-[13px] font-bold leading-none text-text-primary">
             …
           </span>
         </button>

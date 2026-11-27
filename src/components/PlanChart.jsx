@@ -51,7 +51,7 @@ function PlanChart({ plan, unit = 'kg', compact = false }) {
   const reducedMotion = usePrefersReducedMotion()
   if (!plan?.trajectory?.length) {
     return (
-      <div className="flex h-52 items-center justify-center text-[14px] text-text-tertiary">
+      <div className="flex h-52 items-center justify-center text-[14px] text-text-secondary">
         Configurez votre rythme pour voir le plan
       </div>
     )

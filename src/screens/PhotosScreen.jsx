@@ -1,10 +1,12 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ConfirmSheet from "../components/ConfirmSheet";
-import CompareModeSwitch from "../components/photos/CompareModeSwitch";
 import PhotoComparer from "../components/photos/PhotoComparer";
 import PhotoOptionsSheet from "../components/photos/PhotoOptionsSheet";
 import PhotoTimeline from "../components/photos/PhotoTimeline";
+import GlassButton from "../components/ui/GlassButton";
+import GlassCard from "../components/ui/GlassCard";
+import SegmentedControl from "../components/ui/SegmentedControl";
 import { resolveChallengeStart, todayIso } from "../utils/challenge";
 import { formatDays, formatDelta } from "../utils/format";
 import { formatDateCompact, formatDateEntry } from "../utils/locale";
@@ -20,7 +22,12 @@ import {
 } from "../utils/progressPhotos";
 
 const MODE_STORAGE_KEY = "wt_compare_mode";
-const MODES = ["side", "curtain", "fade"];
+const MODE_OPTIONS = [
+  { value: "side", label: "Côte à côte" },
+  { value: "curtain", label: "Rideau" },
+  { value: "fade", label: "Fondu" },
+];
+const MODES = MODE_OPTIONS.map((option) => option.value);
 
 const SHORTCUTS = [
   { key: "start", label: "Départ → Aujourd’hui" },
@@ -30,12 +37,12 @@ const SHORTCUTS = [
 
 // Hauteur du comparateur bornée pour garder la frise à l'écran. Rideau/fondu : pas de rangée
 // de pastilles Avant/Après (les étiquettes du cadre en tiennent lieu) ni de curseur sous le cadre,
-// d'où un cadre plus haut (≈ 383 px, soit 215 px de large, à 390×844).
-const SIDE_HEIGHT = "calc(100svh - 517px)";
-const SINGLE_HEIGHT = "calc(100svh - 461px)";
+// d'où un cadre plus haut (≈ 315 px, soit 177 px de large, à 390×844).
+const SIDE_HEIGHT = "calc(100svh - 585px)";
+const SINGLE_HEIGHT = "calc(100svh - 529px)";
 const COMPARER_STYLE = {
-  side: { maxWidth: `clamp(280px, calc(${SIDE_HEIGHT} * 1.125 + 8px), 100%)` },
-  single: { maxWidth: `clamp(160px, calc(${SINGLE_HEIGHT} * 0.5625), 315px)` },
+  side: { maxWidth: `clamp(280px, calc(${SIDE_HEIGHT} * 1.125 + 24px), 100%)` },
+  single: { maxWidth: `clamp(176px, calc(${SINGLE_HEIGHT} * 0.5625 + 16px), 331px)` },
 };
 
 function readMode() {
@@ -76,8 +83,8 @@ const samePair = (a, b) =>
 
 function Header({ children = null }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 className="animate-fade-up text-[20px] font-black uppercase tracking-tight neon-text-cyan">
+    <div className="space-y-3">
+      <h2 className="text-[28px] font-bold leading-tight tracking-[-0.02em] text-text-primary">
         Photos
       </h2>
       {children}
@@ -190,33 +197,36 @@ function PhotosScreen({
     else if (next.after?.date === photo.date) setActiveSlot("after");
   };
 
-  // Image en échec (URL signée sans doute expirée) : une seule re-signature par URL.
-  const refreshedUrlsRef = useRef(new Set());
+  // Image en échec (URL signée sans doute expirée) : une seule re-signature par photo
+  // (clé storagePath : une nouvelle URL encore en échec ne relance pas de boucle).
+  const refreshedPathsRef = useRef(new Set());
   const handleImageError = useCallback(
     (photo) => {
-      if (!photo?.url || refreshing || refreshedUrlsRef.current.has(photo.url))
+      const key = photo?.storagePath ?? photo?.url;
+      if (!photo?.url || !key || refreshing || refreshedPathsRef.current.has(key))
         return;
-      refreshedUrlsRef.current.add(photo.url);
+      refreshedPathsRef.current.add(key);
       onRefreshUrls?.();
     },
     [onRefreshUrls, refreshing],
   );
 
   const closeOptions = useCallback(() => setOptionsPhoto(null), []);
+  const reasonId = useId();
   const cancelDelete = useCallback(() => setDeletePhoto(null), []);
 
   if (!isSupabaseConfigured) {
     return (
       <section className="space-y-4">
         <Header />
-        <div className="card-base animate-fade-up flex flex-col items-center py-12 text-center">
+        <GlassCard className="animate-fade-up flex flex-col items-center px-5 py-12 text-center">
           <div className="empty-state-icon mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-text-secondary">
             <CameraIllustration />
           </div>
           <p className="max-w-[260px] text-[15px] leading-relaxed text-text-primary">
             Les photos nécessitent la connexion au cloud.
           </p>
-        </div>
+        </GlassCard>
       </section>
     );
   }
@@ -227,21 +237,21 @@ function PhotosScreen({
     return (
       <section className="space-y-4">
         <Header />
-        <div className="card-base animate-fade-up flex flex-col items-center py-12 text-center">
-          <div className="empty-state-icon animate-float mb-5 flex h-16 w-16 items-center justify-center rounded-2xl text-text-secondary">
+        <GlassCard className="animate-fade-up flex flex-col items-center px-5 py-12 text-center">
+          <div className="empty-state-icon mb-5 flex h-16 w-16 items-center justify-center rounded-2xl text-text-secondary">
             <CameraIllustration />
           </div>
           <p className="max-w-[260px] text-[15px] font-medium leading-relaxed text-text-primary">
             Ajoute ta première photo pour suivre ta transformation
           </p>
-          <button
-            type="button"
+          <GlassButton
+            size="lg"
             onClick={() => onAddPhoto?.(today)}
-            className="btn-primary mt-6 h-12 px-6 text-[15px]"
+            className="mt-6"
           >
             Photo du jour
-          </button>
-        </div>
+          </GlassButton>
+        </GlassCard>
       </section>
     );
   }
@@ -256,16 +266,29 @@ function PhotosScreen({
     : undefined;
   const statsTone =
     stats?.isGood === true
-      ? "text-accent-green"
+      ? "text-good"
       : stats?.isGood === false
-        ? "text-accent-red"
+        ? "text-danger"
         : "text-text-primary";
+  const disabledReasons = [
+    ...new Set(
+      visibleShortcuts
+        .filter((shortcut) => !shortcuts[shortcut.key])
+        .map((shortcut) => shortcutDisabledReason(photos, shortcut.key, ctx))
+        .filter(Boolean),
+    ),
+  ];
 
   return (
     <section className="space-y-3" aria-busy={refreshing}>
       <Header>
         {pair?.after ? (
-          <CompareModeSwitch value={mode} onChange={changeMode} />
+          <SegmentedControl
+            options={MODE_OPTIONS}
+            value={mode}
+            onChange={changeMode}
+            ariaLabel="Mode de comparaison"
+          />
         ) : null}
       </Header>
 
@@ -273,6 +296,7 @@ function PhotosScreen({
         className="flex flex-wrap gap-2"
         role="group"
         aria-label="Raccourcis de comparaison"
+        aria-describedby={disabledReasons.length ? reasonId : undefined}
       >
         {visibleShortcuts.map((shortcut) => {
           const enabled = shortcuts[shortcut.key];
@@ -290,10 +314,8 @@ function PhotosScreen({
               }
               aria-pressed={active}
               onClick={() => applyShortcut(shortcut.key)}
-              className={`press-button min-h-[44px] rounded-full px-4 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
-                active
-                  ? "bg-white text-black"
-                  : "bg-bg-elevated text-text-secondary"
+              className={`press-button glass-pill min-h-[44px] px-4 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-45 ${
+                active ? "glass-pill-active" : "text-text-secondary"
               }`}
             >
               {shortcut.label}
@@ -301,10 +323,15 @@ function PhotosScreen({
           );
         })}
       </div>
+      {disabledReasons.length ? (
+        <p id={reasonId} className="-mt-1 text-[12px] text-text-secondary">
+          {disabledReasons.join(" · ")}
+        </p>
+      ) : null}
 
       {pair ? (
-        <div
-          className="mx-auto w-full"
+        <GlassCard
+          className="mx-auto w-full p-2"
           style={singleFrame ? COMPARER_STYLE.single : COMPARER_STYLE.side}
         >
           <PhotoComparer
@@ -315,12 +342,12 @@ function PhotosScreen({
             onImageError={handleImageError}
             onRetryUrl={refreshing ? undefined : onRefreshUrls}
           />
-        </div>
+        </GlassCard>
       ) : null}
 
       {stats && pair?.after ? (
         <p
-          className="text-center text-[17px] font-bold tabular-nums"
+          className="text-center text-[17px] font-semibold tracking-[-0.01em] tabular-nums"
           aria-live="polite"
         >
           <span className={statsTone}>{formatDelta(stats.delta, unit)}</span>
@@ -330,42 +357,21 @@ function PhotosScreen({
       ) : null}
 
       {showSlots && !singleFrame ? (
-        <div
-          role="radiogroup"
-          aria-label="Photo à modifier"
-          className="grid grid-cols-2 gap-2"
-        >
-          {[
+        <SegmentedControl
+          ariaLabel="Photo à modifier"
+          value={activeSlot}
+          onChange={setActiveSlot}
+          options={[
             {
-              key: "before",
-              label: "Avant",
-              photo: pair.before,
-              tone: "bg-accent-blue text-bg-primary",
+              value: "before",
+              label: `Avant · ${formatDateCompact(pair.before.date)}`,
             },
             {
-              key: "after",
-              label: "Après",
-              photo: pair.after,
-              tone: "bg-accent-purple text-white",
+              value: "after",
+              label: `Après · ${formatDateCompact(pair.after.date)}`,
             },
-          ].map((slot) => {
-            const active = activeSlot === slot.key;
-            return (
-              <button
-                key={slot.key}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => setActiveSlot(slot.key)}
-                className={`press-button min-h-[44px] rounded-full px-3 text-[13px] font-semibold ${
-                  active ? slot.tone : "bg-bg-elevated text-text-secondary"
-                }`}
-              >
-                {slot.label} · {formatDateCompact(slot.photo.date)}
-              </button>
-            );
-          })}
-        </div>
+          ]}
+        />
       ) : null}
 
       <PhotoTimeline
@@ -379,24 +385,24 @@ function PhotosScreen({
       />
 
       <div className="space-y-2 pt-1">
-        <button
-          type="button"
+        <GlassButton
+          size="lg"
           onClick={() =>
             hasTodayPhoto ? onReplacePhoto?.(today) : onAddPhoto?.(today)
           }
-          className="btn-primary h-12 w-full text-[15px]"
+          className="w-full"
         >
           {hasTodayPhoto ? "Remplacer la photo du jour" : "Photo du jour"}
-        </button>
+        </GlassButton>
         {onShare || onPlay ? (
           <div className="flex gap-2">
             {onShare ? (
-              <button
-                type="button"
+              <GlassButton
+                variant="secondary"
                 onClick={() => onShare(pair, stats)}
                 disabled={!pair?.after || sharing}
                 aria-busy={sharing}
-                className="press-button h-11 flex-1 rounded-[14px] bg-bg-elevated text-[14px] font-medium text-text-primary disabled:opacity-40"
+                className="flex-1"
               >
                 {sharing
                   ? "Préparation…"
@@ -405,18 +411,17 @@ function PhotosScreen({
                         `${pair.before.date}|${pair.after.date}`
                     ? "Envoyer l’image"
                     : "Partager"}
-              </button>
+              </GlassButton>
             ) : null}
             {onPlay ? (
-              <button
-                type="button"
+              <GlassButton
+                variant="secondary"
                 onClick={() => onPlay()}
                 disabled={photos.length < 2}
-                title={photos.length < 2 ? "Pas assez de photos" : undefined}
-                className="press-button h-11 flex-1 rounded-[14px] bg-bg-elevated text-[14px] font-medium text-text-primary disabled:opacity-40"
+                className="flex-1"
               >
-                Défilé
-              </button>
+                {photos.length < 2 ? "Défilé · 2 photos min." : "Défilé"}
+              </GlassButton>
             ) : null}
           </div>
         ) : null}
