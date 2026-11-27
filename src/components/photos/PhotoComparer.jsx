@@ -11,7 +11,7 @@ function PhotoImage({ photo, ...props }) {
   return <PhotoImageInner key={photo.url ?? ''} photo={photo} {...props} />
 }
 
-function PhotoImageInner({ photo, onImageError, className = '' }) {
+function PhotoImageInner({ photo, onImageError, onRetryUrl, className = '' }) {
   const [failed, setFailed] = useState(false)
 
   if (!photo.url || failed) {
@@ -26,6 +26,15 @@ function PhotoImageInner({ photo, onImageError, className = '' }) {
               setFailed(false)
               onImageError?.(photo)
             }}
+            className="press-button min-h-[44px] rounded-full bg-white/10 px-4 text-[12px] font-medium text-text-secondary"
+          >
+            Réessayer
+          </button>
+        ) : onRetryUrl ? (
+          // URL signée absente (signature échouée) : un seul rafraîchissement des URLs.
+          <button
+            type="button"
+            onClick={() => onRetryUrl()}
             className="press-button min-h-[44px] rounded-full bg-white/10 px-4 text-[12px] font-medium text-text-secondary"
           >
             Réessayer
@@ -72,7 +81,7 @@ function EmptyAfter() {
   )
 }
 
-function Curtain({ before, after, onImageError }) {
+function Curtain({ before, after, onImageError, onRetryUrl }) {
   const boxRef = useRef(null)
   const [percent, setPercent] = useState(50)
 
@@ -103,9 +112,9 @@ function Curtain({ before, after, onImageError }) {
 
   return (
     <div ref={boxRef} className={`${FRAME} ${MAX_H} touch-pan-y`}>
-      <PhotoImage photo={before} onImageError={onImageError} />
+      <PhotoImage photo={before} onImageError={onImageError} onRetryUrl={onRetryUrl} />
       <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${percent}%)` }}>
-        <PhotoImage photo={after} onImageError={onImageError} />
+        <PhotoImage photo={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
       </div>
       <Label>Avant · {formatDateCompact(before.date)}</Label>
       <Label align="right">Après · {formatDateCompact(after.date)}</Label>
@@ -133,15 +142,15 @@ function Curtain({ before, after, onImageError }) {
   )
 }
 
-function Fade({ before, after, onImageError }) {
+function Fade({ before, after, onImageError, onRetryUrl }) {
   const [opacity, setOpacity] = useState(50)
 
   return (
     <div className="flex flex-col gap-1">
       <div className={`${FRAME} ${MAX_H}`}>
-        <PhotoImage photo={before} onImageError={onImageError} />
+        <PhotoImage photo={before} onImageError={onImageError} onRetryUrl={onRetryUrl} />
         <div className="absolute inset-0" style={{ opacity: opacity / 100 }}>
-          <PhotoImage photo={after} onImageError={onImageError} />
+          <PhotoImage photo={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
         </div>
         <Label>Avant · {formatDateCompact(before.date)}</Label>
         <Label align="right">Après · {formatDateCompact(after.date)}</Label>
@@ -159,12 +168,12 @@ function Fade({ before, after, onImageError }) {
   )
 }
 
-function PhotoComparer({ before, after, mode = 'side', onImageError }) {
+function PhotoComparer({ before, after, mode = 'side', onImageError, onRetryUrl }) {
   if (!after) {
     return (
       <div className="grid grid-cols-2 gap-2">
         <div className={`${FRAME} ${MAX_H}`}>
-          <PhotoImage photo={before} onImageError={onImageError} />
+          <PhotoImage photo={before} onImageError={onImageError} onRetryUrl={onRetryUrl} />
           <Label>Avant · {formatDateCompact(before.date)}</Label>
         </div>
         <EmptyAfter />
@@ -172,17 +181,17 @@ function PhotoComparer({ before, after, mode = 'side', onImageError }) {
     )
   }
 
-  if (mode === 'curtain') return <Curtain before={before} after={after} onImageError={onImageError} />
-  if (mode === 'fade') return <Fade before={before} after={after} onImageError={onImageError} />
+  if (mode === 'curtain') return <Curtain before={before} after={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
+  if (mode === 'fade') return <Fade before={before} after={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
 
   return (
     <div className="grid grid-cols-2 gap-2">
       <div className={`${FRAME} ${MAX_H}`}>
-        <PhotoImage photo={before} onImageError={onImageError} />
+        <PhotoImage photo={before} onImageError={onImageError} onRetryUrl={onRetryUrl} />
         <Label>Avant · {formatDateCompact(before.date)}</Label>
       </div>
       <div className={`${FRAME} ${MAX_H}`}>
-        <PhotoImage photo={after} onImageError={onImageError} />
+        <PhotoImage photo={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
         <Label>Après · {formatDateCompact(after.date)}</Label>
       </div>
     </div>

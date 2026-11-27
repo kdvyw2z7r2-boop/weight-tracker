@@ -104,6 +104,8 @@ function PhotosScreen({
   onRecropPhoto,
   onShare,
   onPlay,
+  sharing = false,
+  onRefreshUrls,
 }) {
   const today = todayIso()
   const unit = settings.unit
@@ -244,7 +246,7 @@ function PhotosScreen({
           className="mx-auto w-full"
           style={pair.after && mode !== 'side' ? COMPARER_STYLE.single : COMPARER_STYLE.side}
         >
-          <PhotoComparer before={pair.before} after={pair.after} mode={mode} />
+          <PhotoComparer before={pair.before} after={pair.after} mode={mode} onRetryUrl={onRefreshUrls} />
         </div>
       ) : null}
 
@@ -287,6 +289,7 @@ function PhotosScreen({
         activeSlot={showSlots ? activeSlot : 'before'}
         onSelect={handleSelect}
         onOptions={setOptionsPhoto}
+        onRetryUrl={onRefreshUrls}
       />
 
       <div className="space-y-2 pt-1">
@@ -303,10 +306,11 @@ function PhotosScreen({
               <button
                 type="button"
                 onClick={() => onShare(pair, stats)}
-                disabled={!pair?.after}
+                disabled={!pair?.after || sharing}
+                aria-busy={sharing}
                 className="press-button h-11 flex-1 rounded-[14px] bg-bg-elevated text-[14px] font-medium text-text-primary disabled:opacity-40"
               >
-                Partager
+                {sharing ? 'Préparation…' : 'Partager'}
               </button>
             ) : null}
             {onPlay ? (

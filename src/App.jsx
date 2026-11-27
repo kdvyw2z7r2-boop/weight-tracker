@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BottomNav from './BottomNav'
 import AddWeightModal from './components/AddWeightModal'
 import InstallAppTutorial from './components/InstallAppTutorial'
@@ -11,7 +11,10 @@ import useScrollDirection from './hooks/useScrollDirection'
 import useSync from './hooks/useSync'
 import { useToast } from './hooks/useToast'
 import useUserId from './hooks/useUserId'
+import { fetchWithRetry } from './utils/fetchImage'
+import { formatDateCompact } from './utils/locale'
 import { ghostFor, listPhotos } from './utils/progressPhotos'
+import { buildShareCaption, composeShareImage, shareOrDownload } from './utils/shareImage'
 import DashboardScreen from './screens/DashboardScreen'
 import LogScreen from './screens/LogScreen'
 import PhotosScreen from './screens/PhotosScreen'
@@ -75,6 +78,7 @@ function App() {
   const [photoFlow, setPhotoFlow] = useState(null)
   const [photoFocusDate, setPhotoFocusDate] = useState(null)
   const [addModalDate, setAddModalDate] = useState(null)
+  const [isSharing, setIsSharing] = useState(false)
   const { show: showToast } = useToast()
 
   const { settings, updateSettings } = sync
@@ -122,6 +126,47 @@ function App() {
   const { hasPhotoForDate, deleteDailyPhoto, isSupabaseConfigured } = sync
 
   const photos = useMemo(() => listPhotos(sync.photosByDate, sync.entries), [sync.photosByDate, sync.entries])
+  const syncRef = useRef(sync)
+  useEffect(() => {
+    syncRef.current = sync
+  })
+
+  // Rafraîchit les URLs signées sans écran de chargement (reload en arrière-plan).
+  const { reload } = sync
+  const refreshPhotoUrls = useCallback(() => reload({ background: true }), [reload])
+
+  const sharePair = useCallback(
+    async (pair, stats) => {
+      if (!pair?.after || isSharing) return
+      setIsSharing(true)
+      try {
+        const fetchPhoto = (photo) =>
+          fetchWithRetry(photo.url, {
+            onExpired: async () => {
+              await reload({ background: true })
+              // laisse React appliquer les nouvelles URLs avant de les relire
+              await new Promise((resolve) => setTimeout(resolve, 50))
+              return syncRef.current.getPhotoForDate(photo.date)?.url ?? null
+            },
+          })
+        const [beforeBlob, afterBlob] = await Promise.all([fetchPhoto(pair.before), fetchPhoto(pair.after)])
+        const blob = await composeShareImage({
+          beforeBlob,
+          afterBlob,
+          beforeLabel: `Avant · ${formatDateCompact(pair.before.date)}`,
+          afterLabel: `Après · ${formatDateCompact(pair.after.date)}`,
+          caption: buildShareCaption(stats, settings.unit),
+        })
+        await shareOrDownload(blob, pair.after.date)
+      } catch {
+        showToast('Impossible de créer l’image à partager.', { tone: 'error' })
+      } finally {
+        setIsSharing(false)
+      }
+    },
+    [isSharing, reload, settings.unit, showToast],
+  )
+
   const ghostUrlForDate = useCallback((date) => ghostFor(photos, date)?.url ?? null, [photos])
 
   // Ajout / remplacement / recadrage : un seul flux guidé (source -> cadrage avec fantôme -> envoi).
@@ -186,6 +231,9 @@ function App() {
             onDeletePhoto={deletePhoto}
             onViewPhoto={setPhotoViewerItem}
             onRecropPhoto={recropPhoto}
+            onShare={sharePair}
+            sharing={isSharing}
+            onRefreshUrls={refreshPhotoUrls}
           />
         )
       case 'progress':
@@ -223,6 +271,9 @@ function App() {
     replacePhoto,
     deletePhoto,
     recropPhoto,
+    sharePair,
+    isSharing,
+    refreshPhotoUrls,
   ])
 
   if (sync.isLoading || !sync.hasLoaded) {

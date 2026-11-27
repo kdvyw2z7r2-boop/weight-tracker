@@ -28,7 +28,7 @@ function ThumbImage({ url, onFail }) {
   )
 }
 
-function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions }) {
+function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, onRetryUrl }) {
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
   const longPress = useRef({ timer: null, fired: false })
@@ -91,6 +91,16 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions }
           </span>
         ) : null}
       </button>
+      {!photo.url && onRetryUrl ? (
+        <button
+          type="button"
+          onClick={() => onRetryUrl()}
+          aria-label={`Réessayer de charger la photo du ${dateLabel}`}
+          className="press-button absolute left-1/2 top-[calc(50%-10px)] flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[18px] text-text-secondary"
+        >
+          ↻
+        </button>
+      ) : null}
       {photo.url && failed ? (
         <button
           type="button"
@@ -127,7 +137,7 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions }
  * Frise horizontale des photos (ancien -> récent), groupée par mois.
  * Toucher une vignette -> onSelect(photo) ; appui long ou « … » -> onOptions(photo).
  */
-function PhotoTimeline({ photos, pair, activeSlot, onSelect, onOptions }) {
+function PhotoTimeline({ photos, pair, activeSlot, onSelect, onOptions, onRetryUrl }) {
   const scrollerRef = useRef(null)
   const itemRefs = useRef({})
   const hasScrolledRef = useRef(false)
@@ -173,6 +183,7 @@ function PhotoTimeline({ photos, pair, activeSlot, onSelect, onOptions }) {
                 }}
                 onSelect={onSelect}
                 onOptions={onOptions}
+                onRetryUrl={onRetryUrl}
               />
             ))}
           </ul>
