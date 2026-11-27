@@ -274,7 +274,16 @@ function App() {
           />
         )
       case 'progress':
-        return <ProgressScreen entries={sync.entries} settings={settings} onEditPlan={openPlanModal} />
+        return (
+          <ProgressScreen
+            entries={sync.entries}
+            settings={settings}
+            onEditPlan={openPlanModal}
+            measurements={sync.measurements}
+            onSaveMeasurement={sync.saveMeasurement}
+            onDeleteMeasurements={sync.deleteMeasurements}
+          />
+        )
       case 'settings':
         return (
           <SettingsScreen

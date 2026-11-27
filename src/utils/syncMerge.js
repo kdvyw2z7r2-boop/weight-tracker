@@ -1,3 +1,5 @@
+import { normalizeMeasurement } from './measurements'
+
 export const TOMBSTONE_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
 
 export const defaultSettings = {
@@ -15,6 +17,8 @@ export const defaultSettings = {
   challengeStartWeight: null,
   deletedEntries: {},
   restoredEntries: {},
+  // Mensurations { [id]: relevé } ; suppressions via deletedEntries/restoredEntries (ids UUID partagés).
+  measurements: {},
 }
 
 export const sortByDateDesc = (items) => [...items].sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -26,13 +30,24 @@ function normalizeTombstones(raw) {
   )
 }
 
+/** Table des relevés, clés triées (JSON stable : pas de re-sauvegarde inutile), relevés invalides ignorés. */
+export function normalizeMeasurements(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const records = Object.values(raw).map(normalizeMeasurement).filter(Boolean)
+  records.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  return Object.fromEntries(records.map((record) => [record.id, record]))
+}
+
 export function normalizeSettings(raw) {
-  if (!raw || typeof raw !== 'object') return { ...defaultSettings, deletedEntries: {}, restoredEntries: {} }
+  if (!raw || typeof raw !== 'object') {
+    return { ...defaultSettings, deletedEntries: {}, restoredEntries: {}, measurements: {} }
+  }
   return {
     ...defaultSettings,
     ...raw,
     deletedEntries: normalizeTombstones(raw.deletedEntries),
     restoredEntries: normalizeTombstones(raw.restoredEntries),
+    measurements: normalizeMeasurements(raw.measurements),
   }
 }
 
@@ -56,6 +71,17 @@ export function mergeEntries(cloudEntries, localEntries, tombstones = {}, restor
   }
 
   return sortByDateDesc([...byId.values()])
+}
+
+/** Union par id des relevés (updatedAt le plus récent gagne, `b` à égalité), sans les ids supprimés. */
+export function mergeMeasurements(a, b, tombstones = {}, restores = {}) {
+  const byId = new Map()
+  for (const record of [...Object.values(normalizeMeasurements(a)), ...Object.values(normalizeMeasurements(b))]) {
+    if (isDeletedEntry(record.id, tombstones, restores)) continue
+    const existing = byId.get(record.id)
+    if (!existing || record.updatedAt >= existing.updatedAt) byId.set(record.id, record)
+  }
+  return normalizeMeasurements(Object.fromEntries(byId))
 }
 
 export function mergeTombstones(a, b) {
@@ -107,6 +133,10 @@ function unionMarkers(a, b, now) {
   }
 }
 
+function unionMeasurements(a, b, markers) {
+  return mergeMeasurements(a.measurements, b.measurements, markers.deletedEntries, markers.restoredEntries)
+}
+
 export function sameTombstones(a, b) {
   const left = normalizeTombstones(a)
   const right = normalizeTombstones(b)
@@ -119,7 +149,8 @@ export function mergeSettings(localSettings, cloudSettings, now = Date.now()) {
   const local = normalizeSettings(localSettings)
   if (!cloudSettings) return pruneMarkers(local, now)
   const cloud = normalizeSettings(cloudSettings)
-  return { ...local, ...cloud, ...unionMarkers(local, cloud, now) }
+  const markers = unionMarkers(local, cloud, now)
+  return { ...local, ...cloud, ...markers, measurements: unionMeasurements(cloud, local, markers) }
 }
 
 /**
@@ -129,11 +160,18 @@ export function mergeSettings(localSettings, cloudSettings, now = Date.now()) {
 export function mergeForSave(local, cloud, now = Date.now()) {
   const localSettings = normalizeSettings(local.settings)
   if (!cloud) {
-    const settings = pruneMarkers(localSettings, now)
+    const pruned = pruneMarkers(localSettings, now)
+    const settings = { ...pruned, measurements: unionMeasurements(pruned, {}, pruned) }
     return { entries: mergeEntries([], local.entries, settings.deletedEntries, settings.restoredEntries), settings }
   }
   const cloudSettings = normalizeSettings(cloud.settings)
-  const settings = { ...cloudSettings, ...localSettings, ...unionMarkers(localSettings, cloudSettings, now) }
+  const markers = unionMarkers(localSettings, cloudSettings, now)
+  const settings = {
+    ...cloudSettings,
+    ...localSettings,
+    ...markers,
+    measurements: unionMeasurements(cloudSettings, localSettings, markers),
+  }
   const entries = mergeEntries(cloud.entries ?? [], local.entries, settings.deletedEntries, settings.restoredEntries)
   return { entries, settings }
 }
