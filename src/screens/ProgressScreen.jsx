@@ -25,6 +25,8 @@ import {
   resolvePlanAnchor,
 } from '../utils/weightPlan'
 import { formatPace, formatWeightWithUnit } from '../utils/format'
+import MeasurementsCard from '../components/measurements/MeasurementsCard'
+import BadgesShowcase from '../components/badges/BadgesShowcase'
 
 const PERIODS = [
   { key: '1m', label: '1 mois', days: 30 },
@@ -39,7 +41,16 @@ function formatBmi(value) {
   return value.toFixed(1).replace('.', ',')
 }
 
-function ProgressScreen({ entries, settings, onEditPlan }) {
+function ProgressScreen({
+  entries,
+  settings,
+  onEditPlan,
+  // Mensurations / badges (sections ajoutées en bas de l'écran).
+  measurements = [],
+  onSaveMeasurement,
+  onDeleteMeasurements,
+  badges = null,
+}) {
   const [period, setPeriod] = useState('all')
 
   const filteredEntries = useMemo(() => {
@@ -252,6 +263,19 @@ function ProgressScreen({ entries, settings, onEditPlan }) {
           </GlassButton>
         </GlassCard>
       ) : null}
+
+      {/* Mensurations */}
+      {onSaveMeasurement ? (
+        <MeasurementsCard
+          measurements={measurements}
+          challengeStartDate={settings.challengeStartDate}
+          onSave={onSaveMeasurement}
+          onDeleteMany={onDeleteMeasurements}
+        />
+      ) : null}
+
+      {/* Badges */}
+      {badges ? <BadgesShowcase badges={badges} /> : null}
     </section>
   )
 }

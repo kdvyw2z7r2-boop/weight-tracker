@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { createSupabaseClient, isSupabaseConfigured, PHOTO_BUCKET } from '../lib/supabase'
 import { createSignedPhotoUrl, photoStoragePath } from '../utils/photo'
+import { listMeasurements, normalizeMeasurement } from '../utils/measurements'
 import { convertSettingsUnit, convertWeightValue } from '../utils/units'
 import {
   defaultSettings,
@@ -584,10 +585,16 @@ function useSync(userId) {
       const now = Date.now()
       const sortedEntries = normalizeEntries(nextEntries)
       const baseSettings = normalizeSettings(nextSettings)
-      const normalizedSettings = pruneMarkers(
-        { ...baseSettings, ...updateSyncMarkers(baseSettings, entries, sortedEntries, now, { restoreAdded }) },
+      const entryMarkers = updateSyncMarkers(baseSettings, entries, sortedEntries, now, { restoreAdded })
+      // Mensurations : mêmes marqueurs (ids UUID uniques), diff des relevés retirés / ré-ajoutés.
+      const markers = updateSyncMarkers(
+        entryMarkers,
+        Object.values(normalizeSettings(settings).measurements),
+        Object.values(baseSettings.measurements),
         now,
+        { restoreAdded },
       )
+      const normalizedSettings = pruneMarkers({ ...baseSettings, ...markers }, now)
       const seq = ++persistSeqRef.current
 
       setEntries(sortedEntries)
@@ -617,7 +624,7 @@ function useSync(userId) {
         endSave()
       }
     },
-    [userId, db, entries, saveMerged, applyMerged, beginSave, endSave, commitPhotos],
+    [userId, db, entries, settings, saveMerged, applyMerged, beginSave, endSave, commitPhotos],
   )
 
   const uploadDailyPhoto = useCallback(
@@ -723,6 +730,38 @@ function useSync(userId) {
     },
     [entries, settings, persist],
   )
+
+  // --- Mensurations (settings.measurements) ---
+  const measurements = useMemo(() => listMeasurements(settings.measurements), [settings.measurements])
+
+  /** Crée (sans id) ou modifie un relevé ; renvoie le relevé enregistré. */
+  const saveMeasurement = useCallback(
+    async (data) => {
+      const record = normalizeMeasurement({
+        ...data,
+        id: data.id ?? crypto.randomUUID(),
+        date: data.date ?? format(new Date(), 'yyyy-MM-dd'),
+        updatedAt: Date.now(),
+      })
+      if (!record) throw new Error('Relevé invalide')
+      await persist(entries, { ...settings, measurements: { ...settings.measurements, [record.id]: record } })
+      return record
+    },
+    [entries, settings, persist],
+  )
+
+  const deleteMeasurements = useCallback(
+    async (ids) => {
+      const toRemove = new Set(ids)
+      const next = Object.fromEntries(
+        Object.entries(settings.measurements ?? {}).filter(([id]) => !toRemove.has(id)),
+      )
+      await persist(entries, { ...settings, measurements: next })
+    },
+    [entries, settings, persist],
+  )
+
+  const deleteMeasurement = useCallback((id) => deleteMeasurements([id]), [deleteMeasurements])
 
   const clearAllData = useCallback(async () => {
     const currentPhotos = photosRef.current
@@ -865,6 +904,10 @@ function useSync(userId) {
       exportJSON,
       importJSON,
       convertAllUnits,
+      measurements,
+      saveMeasurement,
+      deleteMeasurement,
+      deleteMeasurements,
     }),
     [
       entries,
@@ -895,6 +938,10 @@ function useSync(userId) {
       exportJSON,
       importJSON,
       convertAllUnits,
+      measurements,
+      saveMeasurement,
+      deleteMeasurement,
+      deleteMeasurements,
     ],
   )
 }

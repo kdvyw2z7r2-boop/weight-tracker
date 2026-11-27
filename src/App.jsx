@@ -7,13 +7,16 @@ import PhotoViewerModal from './components/PhotoViewerModal'
 import AddPhotoFlow from './components/photos/AddPhotoFlow'
 import PhotoTimelapse from './components/photos/PhotoTimelapse'
 import WeightPlanModal from './components/WeightPlanModal'
+import CelebrationSheet from './components/badges/CelebrationSheet'
 import GlassButton from './components/ui/GlassButton'
 import useDailyReminder from './hooks/useDailyReminder'
 import useScrollDirection from './hooks/useScrollDirection'
+import useBadgeCelebration from './hooks/useBadgeCelebration'
 import useSync from './hooks/useSync'
 import { useToast } from './hooks/useToast'
 import useUserId from './hooks/useUserId'
 import { fetchPhotoBlob, PhotoUnavailableError } from './utils/fetchImage'
+import { computeBadges } from './utils/badges'
 import { formatDateCompact } from './utils/locale'
 import { ghostFor, listPhotos } from './utils/progressPhotos'
 import { buildShareCaption, composeShareImage, makeShareFile, shareOrDownload } from './utils/shareImage'
@@ -113,6 +116,23 @@ function App() {
     settings,
     entries: sync.entries,
     onAdd: openAddModal,
+    ready: sync.hasLoaded && !sync.isLoading,
+  })
+
+  // Badges (calculés) + célébration des nouveaux, une seule fois par appareil.
+  const badges = useMemo(
+    () =>
+      computeBadges({
+        entries: sync.entries,
+        settings,
+        photos: sync.photosByDate,
+        measurements: sync.measurements,
+      }),
+    [sync.entries, settings, sync.photosByDate, sync.measurements],
+  )
+  const { toCelebrate, dismiss: dismissCelebration } = useBadgeCelebration({
+    badges,
+    userId,
     ready: sync.hasLoaded && !sync.isLoading,
   })
 
@@ -274,7 +294,17 @@ function App() {
           />
         )
       case 'progress':
-        return <ProgressScreen entries={sync.entries} settings={settings} onEditPlan={openPlanModal} />
+        return (
+          <ProgressScreen
+            entries={sync.entries}
+            settings={settings}
+            onEditPlan={openPlanModal}
+            measurements={sync.measurements}
+            onSaveMeasurement={sync.saveMeasurement}
+            onDeleteMeasurements={sync.deleteMeasurements}
+            badges={badges}
+          />
+        )
       case 'settings':
         return (
           <SettingsScreen
@@ -292,6 +322,7 @@ function App() {
             movingAverage={sync.getMovingAverage(7)}
             onAdd={() => openAddModal()}
             onEditPlan={openPlanModal}
+            reviewData={{ photosByDate: sync.photosByDate, measurements: sync.measurements, badges, userId }}
           />
         )
     }
@@ -314,6 +345,8 @@ function App() {
     pendingShare,
     isRefreshingUrls,
     refreshPhotoUrls,
+    badges,
+    userId,
   ])
 
   if (sync.isLoading || !sync.hasLoaded) {
@@ -381,6 +414,10 @@ function App() {
         photoUrl={photoViewerPhoto?.url}
         weight={photoViewerItem?.weight}
         unit={settings.unit}
+      />
+      <CelebrationSheet
+        badges={isModalOpen || photoFlow || isPlanModalOpen || shouldAutoOpenPlan ? [] : toCelebrate}
+        onDismiss={dismissCelebration}
       />
       <WeightPlanModal
         key={`plan-${settings.weeklyPace ?? 'new'}-${isPlanModalOpen || shouldAutoOpenPlan}`}
