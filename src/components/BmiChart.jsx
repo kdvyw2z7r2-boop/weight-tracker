@@ -26,7 +26,7 @@ function BmiTooltip({ active, payload }) {
         IMC : {String(point.bmi).replace('.', ',')}
       </p>
       {point.avg ? (
-        <p className="mt-0.5 text-[12px] text-good">Moy. : {String(point.avg).replace('.', ',')}</p>
+        <p className="mt-0.5 text-[12px] text-good-text">Moy. : {String(point.avg).replace('.', ',')}</p>
       ) : null}
     </div>
   )

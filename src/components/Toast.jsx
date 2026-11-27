@@ -3,8 +3,8 @@ import { ToastContext } from '../hooks/useToast'
 
 const TONE_CLASS = {
   default: 'text-text-primary',
-  success: 'text-good',
-  error: 'text-danger',
+  success: 'text-good-text',
+  error: 'text-danger-text',
 }
 
 export function ToastProvider({ children }) {
@@ -50,7 +50,7 @@ export function ToastProvider({ children }) {
                   toast.action.onClick()
                   dismiss()
                 }}
-                className="press-button flex h-11 min-w-11 shrink-0 items-center justify-center rounded-xl px-3 text-[14px] font-semibold text-accent"
+                className="press-button flex h-11 min-w-11 shrink-0 items-center justify-center rounded-xl px-3 text-[14px] font-semibold text-accent-text"
               >
                 {toast.action.label}
               </button>

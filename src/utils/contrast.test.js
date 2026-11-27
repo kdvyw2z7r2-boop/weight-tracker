@@ -58,3 +58,25 @@ describe('tokens texte sur le verre (≥ 4.5:1)', () => {
     }
   }
 })
+
+describe('tokens texte colorés sur le verre et sur le fond (≥ 4.5:1)', () => {
+  // Pic de chaque halo réel (le plus lumineux : halo-1) et fond nu, avec et sans verre.
+  const bgPrimary = parseColor(token('bg-primary'))
+  const rootVar = (name) => css.match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1].trim()
+  const glass = [255, 255, 255, 0.14]
+  const backdrops = {
+    'fond nu': bgPrimary,
+    'verre / fond': composite(glass, bgPrimary),
+    ...Object.fromEntries(
+      ['halo-1', 'halo-2', 'halo-3'].map((n) => [`verre / ${n}`, composite(glass, composite(parseColor(rootVar(n)), bgPrimary))]),
+    ),
+  }
+  for (const name of ['danger-text', 'accent-text', 'good-text']) {
+    for (const [bgName, surface] of Object.entries(backdrops)) {
+      it(`${name} sur ${bgName}`, () => {
+        expect(token(name)).toBeTruthy()
+        expect(contrastRatio(parseColor(token(name)), surface)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
+})

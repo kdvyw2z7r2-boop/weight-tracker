@@ -13,6 +13,7 @@ import {
   normalizeSettings,
   pruneMarkers,
   sameTombstones,
+  settingsForImport,
   sortByDateDesc,
   updateSyncMarkers,
 } from '../utils/syncMerge'
@@ -855,9 +856,9 @@ function useSync(userId) {
       if (!Array.isArray(parsed.entries)) {
         throw new Error('Invalid backup format')
       }
-      const nextSettings = parsed.settings ? mergeSettings(settings, parsed.settings) : settings
+      const nextSettings = parsed.settings ? settingsForImport(settings, parsed.settings) : settings
       const nextPhotos = parsed.photosByDate ? normalizePhotosMap(parsed.photosByDate) : undefined
-      // restoreAdded : les ids importés absents d'ici sont restaurés, même si leur tombstone n'est que dans le cloud.
+      // restoreAdded : les ids importés (pesées et mensurations) absents d'ici sont restaurés, même si leur tombstone n'est que dans le cloud.
       await persist(mergeEntries([], normalizeEntries(parsed.entries)), nextSettings, nextPhotos, { restoreAdded: true })
       return parsed
     },

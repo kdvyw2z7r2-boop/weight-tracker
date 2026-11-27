@@ -38,7 +38,7 @@ function Sparkline({ points }) {
   )
 }
 
-const deltaTone = (delta) => (delta == null ? 'text-text-secondary' : delta < 0 ? 'text-good' : delta > 0 ? 'text-danger' : 'text-text-secondary')
+const deltaTone = (delta) => (delta == null ? 'text-text-secondary' : delta < 0 ? 'text-good-text' : delta > 0 ? 'text-danger-text' : 'text-text-secondary')
 
 /** Section « Mensurations » (Progrès) : cumul depuis le départ, mini-courbes, relevés, saisie. */
 function MeasurementsCard({ measurements, challengeStartDate, onSave, onDeleteMany }) {
@@ -117,7 +117,7 @@ function MeasurementsCard({ measurements, challengeStartDate, onSave, onDeleteMa
                   </p>
                 </div>
                 {series.length >= 2 ? (
-                  <span className="text-accent">
+                  <span className="text-accent-text">
                     <Sparkline points={series} />
                   </span>
                 ) : null}

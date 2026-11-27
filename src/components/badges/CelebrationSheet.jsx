@@ -21,6 +21,7 @@ function CelebrationSheet({ badges, onDismiss }) {
       subtitle="Bravo, continue comme ça."
       onClose={onDismiss}
       initialFocusRef={continueRef}
+      dialogKind="celebration"
     >
       <ul className="mt-4 space-y-2">
         {shown.map((badge, index) => (

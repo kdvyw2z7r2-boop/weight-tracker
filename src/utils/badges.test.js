@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BADGES, computeBadges, formatBadgeProgress, longestStreak, newlyEarned } from './badges'
+import { BADGES, canInitSeenBadges, computeBadges, formatBadgeProgress, longestStreak, newlyEarned } from './badges'
 
 // Pesées au format useSync (date DESC).
 const entries = (list) =>
@@ -133,5 +133,13 @@ describe('formatBadgeProgress', () => {
     expect(formatBadgeProgress({ current: 3.24, target: 5, unit: 'kg' })).toBe('3,2 / 5 kg')
     expect(formatBadgeProgress({ current: 50, target: 75, unit: '%' })).toBe('50 / 75 %')
     expect(formatBadgeProgress({ current: 4, target: 7, unit: 'jours' })).toBe('4 / 7 jours')
+  })
+})
+
+describe('canInitSeenBadges', () => {
+  it('initialises "seen" only after a cloud load or without any cloud configured', () => {
+    expect(canInitSeenBadges('cloud')).toBe(true)
+    expect(canInitSeenBadges('local-unconfigured')).toBe(true)
+    expect(canInitSeenBadges('local-offline')).toBe(false)
   })
 })

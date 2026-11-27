@@ -13,13 +13,13 @@ const LOGO = path.join(ROOT, 'public', 'favicon.svg')
 const BADGE = path.join(ROOT, 'public', 'badge.svg')
 const OUT_DIR = path.join(ROOT, 'public', 'icons')
 
-// Le logo est plein cadre (fond nuit + halos) : pas de fond ajouté, échelle 1. Le contenu utile
-// (disque de verre, r = 168/512) tient dans le cercle sûr de 80 % du masque adaptatif.
+// Le logo est plein cadre (fond nuit + halos) : pas de fond ajouté, échelle 1. Variante maskable :
+// logo réduit à 80 % et centré sur le fond #0c0907, pour rester dans la zone sûre du masque adaptatif.
 // scale : part du côté occupée par l'image. background : null = transparent.
 const ICONS = [
   { file: 'icon-192.png', size: 192, scale: 1, background: null, source: LOGO },
   { file: 'icon-512.png', size: 512, scale: 1, background: null, source: LOGO },
-  { file: 'maskable-512.png', size: 512, scale: 1, background: null, source: LOGO },
+  { file: 'maskable-512.png', size: 512, scale: 0.8, background: '#0c0907', source: LOGO },
   { file: 'apple-touch-icon.png', size: 180, scale: 1, background: null, source: LOGO },
   { file: 'badge-96.png', size: 96, scale: 1, background: null, source: BADGE },
 ]

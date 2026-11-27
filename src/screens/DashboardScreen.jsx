@@ -58,7 +58,7 @@ function DashboardScreen({ entries, settings, movingAverage, onEditPlan, reviewD
   const displayWeight = latest ? formatWeight(animatedWeight) : '—'
 
   const deltaTone = delta === null ? 'badge-tone-neutral' : delta <= 0 ? 'badge-tone-good' : 'badge-tone-bad'
-  const monthTone = monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'text-good' : 'text-danger'
+  const monthTone = monthVariation === null ? 'text-text-tertiary' : monthVariation <= 0 ? 'text-good-text' : 'text-danger-text'
 
   return (
     <section className="space-y-3">
@@ -143,7 +143,7 @@ function DashboardScreen({ entries, settings, movingAverage, onEditPlan, reviewD
                 <button
                   type="button"
                   onClick={onEditPlan}
-                  className="press-button min-h-11 px-2 text-[13px] font-medium text-accent"
+                  className="press-button min-h-11 px-2 text-[13px] font-medium text-accent-text"
                 >
                   Définir un plan
                 </button>

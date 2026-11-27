@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import { useEffect, useRef, useState } from 'react'
+import { useDialogLayer } from '../hooks/dialogStack'
 import GlassButton from './ui/GlassButton'
 import PhotoCropModal from './PhotoCropModal'
 import usePhotoCrop from '../hooks/usePhotoCrop'
@@ -55,20 +56,17 @@ function AddWeightModal({
     if (isOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- modal mount animation
       setRender(true)
-      document.body.style.overflow = 'hidden'
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setVisible(true))
       })
     } else {
       setVisible(false)
-      document.body.style.overflow = ''
       const timer = setTimeout(() => setRender(false), 380)
       return () => clearTimeout(timer)
     }
-    return () => {
-      document.body.style.overflow = ''
-    }
+    return undefined
   }, [isOpen])
+  useDialogLayer(isOpen)
 
   useEffect(() => {
     if (previousDateRef.current === date) return
@@ -293,7 +291,7 @@ function AddWeightModal({
           </div>
         </div>
 
-        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-danger-text">{error}</p> : null}
 
         <GlassButton type="submit" size="lg" disabled={!canSubmit} className="mt-6 w-full disabled:cursor-not-allowed disabled:opacity-40">
           {isSaving ? 'Enregistrement…' : 'Enregistrer'}

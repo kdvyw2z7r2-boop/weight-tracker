@@ -72,7 +72,9 @@ export function weeklyReview({ entries = [], settings = {}, photos = null, measu
   const deltaAvg = avg != null && prevAvg != null ? round2(avg - prevAvg) : null
   const days = weekEntries.map((entry) => entry.date)
 
-  const reference = resolveChallengeStart(settings, entries)?.startWeight ?? entries[0]?.weight ?? null
+  // Repli : la plus ancienne pesée (entries est en ordre DESC, ne pas prendre entries[0]).
+  const oldest = entries.reduce((min, entry) => (!min || entry.date < min.date ? entry : min), null)
+  const reference = resolveChallengeStart(settings, entries)?.startWeight ?? oldest?.weight ?? null
   const goalIsLoss = reference == null || Number(settings.targetWeight) <= reference
   const planPace = settings.weeklyPace ? (goalIsLoss ? -1 : 1) * Number(settings.weeklyPace) : null
 

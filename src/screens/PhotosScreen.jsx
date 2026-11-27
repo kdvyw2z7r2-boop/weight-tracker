@@ -266,9 +266,9 @@ function PhotosScreen({
     : undefined;
   const statsTone =
     stats?.isGood === true
-      ? "text-good"
+      ? "text-good-text"
       : stats?.isGood === false
-        ? "text-danger"
+        ? "text-danger-text"
         : "text-text-primary";
   const disabledReasons = [
     ...new Set(

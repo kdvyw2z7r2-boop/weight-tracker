@@ -54,7 +54,7 @@ function ProgressRing({ startWeight, startDate, currentWeight, targetWeight, uni
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <p
             className={`text-[32px] font-light leading-none tracking-[-0.03em] tabular-nums ${
-              isPositiveProgress ? 'text-accent' : 'text-text-primary'
+              isPositiveProgress ? 'text-accent-text' : 'text-text-primary'
             }`}
           >
             {displayPercent}%

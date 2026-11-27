@@ -18,18 +18,21 @@ function BadgesShowcase({ badges }) {
       </div>
       <ul className="mt-4 grid grid-cols-3 gap-2">
         {badges.map((badge) => (
-          <li
-            key={badge.id}
-            className={`glass-sm flex flex-col items-center px-1.5 py-3 text-center ${badge.earned ? '' : 'opacity-70'}`}
-            aria-label={`${badge.title} — ${
-              badge.earned ? `obtenu le ${formatDateCompact(badge.earnedAt)}` : `à venir, ${formatBadgeProgress(badge.progress)}`
-            }`}
-          >
+          <li key={badge.id} className="glass-sm flex flex-col items-center px-1.5 py-3 text-center">
+            {/* Libellé complet pour les lecteurs d'écran ; seule l'icône est atténuée pour un badge à venir (contraste du texte). */}
+            <span className="sr-only">
+              {`${badge.title} — ${
+                badge.earned ? `obtenu le ${formatDateCompact(badge.earnedAt)}` : `à venir, ${formatBadgeProgress(badge.progress)}`
+              }`}
+            </span>
             <BadgeIcon icon={badge.icon} category={badge.category} earned={badge.earned} size={44} />
-            <p className={`mt-2 text-[12px] font-semibold leading-tight ${badge.earned ? 'text-text-primary' : 'text-text-secondary'}`}>
+            <p
+              aria-hidden="true"
+              className={`mt-2 text-[12px] font-semibold leading-tight ${badge.earned ? 'text-text-primary' : 'text-text-secondary'}`}
+            >
               {badge.title}
             </p>
-            <p className="mt-0.5 text-[11px] tabular-nums leading-tight text-text-tertiary">
+            <p aria-hidden="true" className="mt-0.5 text-[11px] tabular-nums leading-tight text-text-tertiary">
               {badge.earned ? formatDateCompact(badge.earnedAt) : formatBadgeProgress(badge.progress)}
             </p>
           </li>

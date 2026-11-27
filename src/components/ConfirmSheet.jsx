@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useDialogLayer } from '../hooks/dialogStack'
 
 function ConfirmSheet({
   open,
@@ -22,13 +23,11 @@ function ConfirmSheet({
       returnFocusRef.current = document.activeElement
       // eslint-disable-next-line react-hooks/set-state-in-effect -- modal mount animation
       setRender(true)
-      document.body.style.overflow = 'hidden'
       const frame = requestAnimationFrame(() => {
         requestAnimationFrame(() => setVisible(true))
       })
       return () => {
         cancelAnimationFrame(frame)
-        document.body.style.overflow = ''
       }
     }
     setVisible(false)
@@ -43,14 +42,7 @@ function ConfirmSheet({
     if (open && visible) cancelRef.current?.focus()
   }, [open, visible])
 
-  useEffect(() => {
-    if (!open) return undefined
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') onCancel()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onCancel])
+  useDialogLayer(open, { onEscape: onCancel })
 
   if (!render) return null
 

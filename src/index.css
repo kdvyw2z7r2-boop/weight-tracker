@@ -11,6 +11,10 @@
   --color-good: #34c759;
   --color-streak: #ffd60a;
   --color-danger: #ff453a;
+  /* Variantes TEXTE (≥ 4.5:1 sur le verre au-dessus des halos, contrast.test.js) ; les tokens ci-dessus restent pour remplissages/traits. */
+  --color-danger-text: #ffa396;
+  --color-accent-text: #ffa878;
+  --color-good-text: #6ee08a;
   --color-weight: #ff7a45;
   --color-plan: #ffb38a;
   --color-avg: #34c759;
@@ -27,9 +31,9 @@
 :root {
   /* Barre d'onglets flottante : 64 px de capsule + 12 px de marge basse + safe-area. */
   --nav-h: calc(64px + 12px + env(safe-area-inset-bottom, 0px));
-  /* Halos du fond (pics). halo-2 atténué à 55 % : à pleine intensité, aucun texte clair n'atteint 4.5:1. */
-  --halo-1: #5a2210;
-  --halo-2: rgba(255, 122, 69, 0.3);
+  /* Halos du fond (pics). Atténués (halo-2 à 24 %) : sinon ni texte clair ni texte coloré n'atteint 4.5:1. */
+  --halo-1: #4c1c0d;
+  --halo-2: rgba(255, 122, 69, 0.24);
   --halo-3: #3d1a0b;
   --glass-fallback: rgba(42, 31, 25, 0.88);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, system-ui, sans-serif;

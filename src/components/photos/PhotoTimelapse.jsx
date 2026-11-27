@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useDialogLayer } from '../../hooks/dialogStack'
 import { createPortal } from 'react-dom'
 import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion'
 import { formatWeightWithUnit } from '../../utils/format'
@@ -27,9 +28,7 @@ function PhotoTimelapse({ photos, unit = 'kg', onClose }) {
   useEffect(() => {
     const toRestore = document.activeElement
     closeRef.current?.focus()
-    document.body.style.overflow = 'hidden'
     return () => {
-      document.body.style.overflow = ''
       if (toRestore instanceof HTMLElement && toRestore.isConnected) toRestore.focus()
     }
   }, [])
@@ -73,10 +72,6 @@ function PhotoTimelapse({ photos, unit = 'kg', onClose }) {
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        onClose()
-        return
-      }
       const target = event.target
       const onButton = target instanceof HTMLElement && target.tagName === 'BUTTON'
       const onRange = target instanceof HTMLInputElement && target.type === 'range'
@@ -89,7 +84,8 @@ function PhotoTimelapse({ photos, unit = 'kg', onClose }) {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose, step, togglePlay])
+  }, [step, togglePlay])
+  useDialogLayer(true, { onEscape: onClose })
 
   const frame = frames[Math.min(index, Math.max(last, 0))]
 

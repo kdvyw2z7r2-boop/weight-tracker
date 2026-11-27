@@ -84,8 +84,8 @@ function WeeklyReviewCard({ entries, settings, photosByDate, measurements, badge
     review.deltaAvg == null || review.deltaAvg === 0
       ? 'text-text-secondary'
       : goodDirection(review.deltaAvg)
-        ? 'text-good'
-        : 'text-danger'
+        ? 'text-good-text'
+        : 'text-danger-text'
 
   const dismissRecap = () => {
     writeDismissed(userId, defaultWeek)
@@ -144,7 +144,7 @@ function WeeklyReviewCard({ entries, settings, photosByDate, measurements, badge
           </Row>
           {review.planPace != null && review.pace != null ? (
             <Row label="Rythme vs plan">
-              <span className={goodDirection(review.pace - review.planPace) || review.pace === review.planPace ? 'text-good' : 'text-text-primary'}>
+              <span className={goodDirection(review.pace - review.planPace) || review.pace === review.planPace ? 'text-good-text' : 'text-text-primary'}>
                 {signedPace(review.pace, unit)}
               </span>
               <span className="block text-[12px] font-medium text-plan">plan {signedPace(review.planPace, unit)}</span>
@@ -152,7 +152,7 @@ function WeeklyReviewCard({ entries, settings, photosByDate, measurements, badge
           ) : null}
           {review.measurementDelta ? (
             <Row label="Mensurations">
-              <span className={review.measurementDelta.total < 0 ? 'text-good' : 'text-text-primary'}>
+              <span className={review.measurementDelta.total < 0 ? 'text-good-text' : 'text-text-primary'}>
                 {formatCmDelta(review.measurementDelta.total)}
               </span>
             </Row>
@@ -186,7 +186,7 @@ function WeeklyReviewCard({ entries, settings, photosByDate, measurements, badge
         <button
           type="button"
           onClick={dismissRecap}
-          className="press-button mt-3 min-h-11 w-full rounded-full text-[13px] font-semibold text-accent"
+          className="press-button mt-3 min-h-11 w-full rounded-full text-[13px] font-semibold text-accent-text"
         >
           Fermer le bilan · voir cette semaine
         </button>

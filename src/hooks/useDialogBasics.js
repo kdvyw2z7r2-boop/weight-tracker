@@ -1,32 +1,16 @@
-import { useEffect, useRef } from 'react'
-
-// Verrou de défilement compté : plusieurs dialogues empilés ne se débloquent pas l'un l'autre.
-let scrollLocks = 0
-
-function lockScroll() {
-  scrollLocks += 1
-  document.body.style.overflow = 'hidden'
-}
-
-function unlockScroll() {
-  scrollLocks = Math.max(0, scrollLocks - 1)
-  if (scrollLocks === 0) document.body.style.overflow = ''
-}
+import { useEffect } from 'react'
+import { useDialogLayer } from './dialogStack'
 
 /**
  * Bases d'un dialogue modal : Échap ferme, focus déplacé à l'ouverture (initialFocusRef ou
  * premier élément focusable de containerRef) et rendu à la fermeture, défilement verrouillé.
  */
 function useDialogBasics({ open, onClose, containerRef, initialFocusRef }) {
-  const onCloseRef = useRef(onClose)
-  useEffect(() => {
-    onCloseRef.current = onClose
-  })
+  useDialogLayer(open, { onEscape: onClose })
 
   useEffect(() => {
     if (!open) return undefined
     const returnTo = document.activeElement
-    lockScroll()
     // Double rAF : le dialogue peut n'être monté qu'au rendu suivant (animation d'entrée).
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(focusInitial)
@@ -39,14 +23,8 @@ function useDialogBasics({ open, onClose, containerRef, initialFocusRef }) {
         )
       target?.focus?.()
     }
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') onCloseRef.current?.()
-    }
-    document.addEventListener('keydown', onKeyDown)
     return () => {
       cancelAnimationFrame(frame)
-      document.removeEventListener('keydown', onKeyDown)
-      unlockScroll()
       if (returnTo instanceof HTMLElement && returnTo.isConnected) returnTo.focus()
     }
     // Refs stables : l'effet ne dépend que de l'ouverture.

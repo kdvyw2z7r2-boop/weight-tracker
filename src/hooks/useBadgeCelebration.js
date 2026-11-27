@@ -25,20 +25,21 @@ function writeSeen(userId, ids) {
 
 /**
  * Badges à célébrer (obtenus, pas encore vus sur cet appareil). Premier lancement (aucune liste) :
- * les badges déjà obtenus sont marqués vus sans célébration (pas d'avalanche pour un utilisateur existant).
+ * les badges déjà obtenus sont marqués vus sans célébration (pas d'avalanche pour un utilisateur existant),
+ * seulement quand `canInitSeen` (données fiables : cloud chargé ou pas de cloud configuré).
  */
-function useBadgeCelebration({ badges, userId, ready }) {
+function useBadgeCelebration({ badges, userId, ready, canInitSeen = true }) {
   const [state, setState] = useState(() => ({ userId, seen: readSeen(userId) }))
   if (state.userId !== userId) setState({ userId, seen: readSeen(userId) })
 
   const earnedIds = useMemo(() => badges.filter((badge) => badge.earned).map((badge) => badge.id), [badges])
 
   useEffect(() => {
-    if (!ready || !userId || state.userId !== userId || state.seen !== null) return
+    if (!ready || !canInitSeen || !userId || state.userId !== userId || state.seen !== null) return
     writeSeen(userId, earnedIds)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initialisation unique de la liste « vus »
     setState({ userId, seen: earnedIds })
-  }, [ready, userId, state, earnedIds])
+  }, [ready, canInitSeen, userId, state, earnedIds])
 
   const toCelebrate = useMemo(
     () => (ready && state.userId === userId && state.seen ? newlyEarned(badges, state.seen) : []),

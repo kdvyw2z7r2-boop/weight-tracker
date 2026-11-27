@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion'
+import { useDialogLayer } from '../../hooks/dialogStack'
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select, textarea, [href], [tabindex]:not([tabindex="-1"])'
 
@@ -9,7 +10,7 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select, textar
  * l'ouverture (initialFocusRef ou 1er élément focalisable) puis restauré, défilement verrouillé,
  * piège de tabulation, pas d'animation si prefers-reduced-motion.
  */
-function GlassSheet({ open, title, subtitle, onClose, initialFocusRef, children, labelledBy }) {
+function GlassSheet({ open, title, subtitle, onClose, initialFocusRef, children, labelledBy, dialogKind }) {
   const reducedMotion = usePrefersReducedMotion()
   const [render, setRender] = useState(open)
   const [visible, setVisible] = useState(false)
@@ -21,18 +22,16 @@ function GlassSheet({ open, title, subtitle, onClose, initialFocusRef, children,
   useEffect(() => {
     onCloseRef.current = onClose
   })
+  useDialogLayer(open, { onEscape: onClose, kind: dialogKind })
 
   useEffect(() => {
     if (open) {
       returnFocusRef.current = document.activeElement
       // eslint-disable-next-line react-hooks/set-state-in-effect -- montage animé de la feuille
       setRender(true)
-      const previousOverflow = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
       const frame = requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
       return () => {
         cancelAnimationFrame(frame)
-        document.body.style.overflow = previousOverflow
       }
     }
     setVisible(false)
@@ -52,11 +51,6 @@ function GlassSheet({ open, title, subtitle, onClose, initialFocusRef, children,
   useEffect(() => {
     if (!open) return undefined
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        onCloseRef.current?.()
-        return
-      }
       if (event.key !== 'Tab' || !panelRef.current) return
       const items = [...panelRef.current.querySelectorAll(FOCUSABLE)]
       if (!items.length) return

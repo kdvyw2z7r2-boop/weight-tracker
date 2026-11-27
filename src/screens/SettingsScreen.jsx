@@ -101,7 +101,7 @@ function ChallengeCard({ entries, settings, updateSettings }) {
           <button
             type="button"
             onClick={() => setConfirming('restore')}
-            className="press-button min-h-11 w-full text-center text-[14px] font-medium text-accent underline-offset-2 hover:underline"
+            className="press-button min-h-11 w-full text-center text-[14px] font-medium text-accent-text underline-offset-2 hover:underline"
           >
             Reprendre depuis la première pesée
           </button>

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { useDialogLayer } from '../../hooks/dialogStack'
 import { formatWeightWithUnit } from '../../utils/format'
 import { formatDateEntry } from '../../utils/locale'
 
@@ -23,13 +24,11 @@ function PhotoOptionsSheet({ open, photo, unit = 'kg', onClose, onView, onRecrop
       returnFocusRef.current = document.activeElement
       // eslint-disable-next-line react-hooks/set-state-in-effect -- modal mount animation
       setRender(true)
-      document.body.style.overflow = 'hidden'
       const frame = requestAnimationFrame(() => {
         requestAnimationFrame(() => setVisible(true))
       })
       return () => {
         cancelAnimationFrame(frame)
-        document.body.style.overflow = ''
       }
     }
     setVisible(false)
@@ -44,14 +43,7 @@ function PhotoOptionsSheet({ open, photo, unit = 'kg', onClose, onView, onRecrop
     if (open && visible) firstRef.current?.focus()
   }, [open, visible])
 
-  useEffect(() => {
-    if (!open) return undefined
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+  useDialogLayer(open, { onEscape: onClose })
 
   if (!render || !shown) return null
 

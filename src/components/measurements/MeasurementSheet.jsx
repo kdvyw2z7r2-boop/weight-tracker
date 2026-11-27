@@ -108,7 +108,7 @@ function MeasurementSheet({ open, record, lastValues, onSave, onClose }) {
                   </span>
                 </div>
                 {invalid ? (
-                  <p id={`${id}-err`} className="mt-1 text-[12px] text-danger">
+                  <p id={`${id}-err`} className="mt-1 text-[12px] text-danger-text">
                     Entre {CM_MIN} et {CM_MAX} cm
                   </p>
                 ) : null}
@@ -117,7 +117,7 @@ function MeasurementSheet({ open, record, lastValues, onSave, onClose }) {
           })}
         </div>
         {error ? (
-          <p role="alert" className="text-[13px] text-danger">
+          <p role="alert" className="text-[13px] text-danger-text">
             {error}
           </p>
         ) : null}

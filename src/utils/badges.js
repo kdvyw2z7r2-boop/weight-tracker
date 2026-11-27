@@ -163,3 +163,12 @@ export function formatBadgeProgress(progress) {
   const decimal = unit === 'kg' || unit === 'lbs' || unit === 'cm'
   return `${formatNumber(current, decimal ? 1 : 0)} / ${target} ${unit}`
 }
+
+/**
+ * La liste « vus » ne s'initialise qu'avec des données fiables : après un chargement cloud réussi,
+ * ou sans cloud configuré (les données locales font foi). Hors ligne : on attend le cloud, sinon
+ * un nouvel appareil célébrerait d'un coup tous les badges au premier chargement réussi.
+ */
+export function canInitSeenBadges(syncStatus) {
+  return syncStatus !== 'local-offline'
+}

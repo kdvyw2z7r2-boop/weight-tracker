@@ -12,11 +12,12 @@ import GlassButton from './components/ui/GlassButton'
 import useDailyReminder from './hooks/useDailyReminder'
 import useScrollDirection from './hooks/useScrollDirection'
 import useBadgeCelebration from './hooks/useBadgeCelebration'
+import { useBlockingDialogOpen } from './hooks/dialogStack'
 import useSync from './hooks/useSync'
 import { useToast } from './hooks/useToast'
 import useUserId from './hooks/useUserId'
 import { fetchPhotoBlob, PhotoUnavailableError } from './utils/fetchImage'
-import { computeBadges } from './utils/badges'
+import { canInitSeenBadges, computeBadges } from './utils/badges'
 import { formatDateCompact } from './utils/locale'
 import { ghostFor, listPhotos } from './utils/progressPhotos'
 import { buildShareCaption, composeShareImage, makeShareFile, shareOrDownload } from './utils/shareImage'
@@ -58,7 +59,7 @@ function LoadingScreen({ error, onRetry }) {
           <h1 className="mt-5 text-lg font-semibold">Chargement…</h1>
           {error ? (
             <>
-              <p className="mt-4 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>
+              <p className="mt-4 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger-text">{error}</p>
               <GlassButton onClick={onRetry} className="mt-5 px-6">
                 Réessayer
               </GlassButton>
@@ -130,10 +131,12 @@ function App() {
       }),
     [sync.entries, settings, sync.photosByDate, sync.measurements],
   )
+  const blockingDialogOpen = useBlockingDialogOpen()
   const { toCelebrate, dismiss: dismissCelebration } = useBadgeCelebration({
     badges,
     userId,
     ready: sync.hasLoaded && !sync.isLoading,
+    canInitSeen: canInitSeenBadges(sync.syncStatus),
   })
 
   const closeAddModal = useCallback(() => {
@@ -360,7 +363,7 @@ function App() {
       <main className="relative z-10 mx-auto w-full max-w-md px-4 pb-[calc(var(--nav-h)+56px+16px)] pt-4">
         <InstallAppTutorial leading={tab === 'dashboard' ? <SyncStatusPill status={sync.syncStatus} /> : null} />
         {sync.error ? (
-          <div className="mb-3 rounded-2xl border border-danger/20 bg-danger/10 px-4 py-3 text-[13px] leading-relaxed text-danger">
+          <div className="mb-3 rounded-2xl border border-danger/20 bg-danger/10 px-4 py-3 text-[13px] leading-relaxed text-danger-text">
             {sync.error}
           </div>
         ) : null}
@@ -416,7 +419,9 @@ function App() {
         unit={settings.unit}
       />
       <CelebrationSheet
-        badges={isModalOpen || photoFlow || isPlanModalOpen || shouldAutoOpenPlan ? [] : toCelebrate}
+        badges={
+          blockingDialogOpen || isModalOpen || photoFlow || isPlanModalOpen || shouldAutoOpenPlan ? [] : toCelebrate
+        }
         onDismiss={dismissCelebration}
       />
       <WeightPlanModal

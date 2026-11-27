@@ -150,7 +150,7 @@ function PhotoCropEditor({ imageUrl, ghostUrl, onClose, onConfirm }) {
         <p className="mt-1 text-center text-[13px] text-text-secondary">
           Déplacez et zoomez pour cadrer votre photo en 9:16
         </p>
-        {error ? <p className="mt-3 text-center text-sm text-danger">{error}</p> : null}
+        {error ? <p className="mt-3 text-center text-sm text-danger-text">{error}</p> : null}
       </div>
     </div>
   )

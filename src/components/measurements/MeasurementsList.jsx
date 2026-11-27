@@ -20,7 +20,7 @@ function MeasurementsList({ measurements, onEdit, onDelete }) {
             <button
               type="button"
               onClick={() => onEdit(record)}
-              className="press-button min-h-11 shrink-0 rounded-full px-3 text-[13px] font-semibold text-accent"
+              className="press-button min-h-11 shrink-0 rounded-full px-3 text-[13px] font-semibold text-accent-text"
               aria-label={`Modifier le relevé du ${formatDateEntry(record.date)}`}
             >
               Modifier
@@ -28,7 +28,7 @@ function MeasurementsList({ measurements, onEdit, onDelete }) {
             <button
               type="button"
               onClick={() => onDelete(record)}
-              className="press-button min-h-11 shrink-0 rounded-full px-3 text-[13px] font-semibold text-danger"
+              className="press-button min-h-11 shrink-0 rounded-full px-3 text-[13px] font-semibold text-danger-text"
               aria-label={`Supprimer le relevé du ${formatDateEntry(record.date)}`}
             >
               Supprimer

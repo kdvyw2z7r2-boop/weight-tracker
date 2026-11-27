@@ -154,6 +154,19 @@ export function mergeSettings(localSettings, cloudSettings, now = Date.now()) {
 }
 
 /**
+ * Import d'une sauvegarde JSON : comme mergeSettings, mais les mensurations de la sauvegarde font
+ * foi (comme les pesées), sans filtrage par les tombstones locales ; persist(restoreAdded) pose
+ * ensuite les marqueurs de restauration. Sauvegarde sans mensurations : on garde les actuelles.
+ */
+export function settingsForImport(currentSettings, backupSettings, now = Date.now()) {
+  const merged = mergeSettings(currentSettings, backupSettings, now)
+  if (!backupSettings || typeof backupSettings !== 'object' || !('measurements' in backupSettings)) {
+    return { ...merged, measurements: normalizeSettings(currentSettings).measurements }
+  }
+  return { ...merged, measurements: normalizeMeasurements(backupSettings.measurements) }
+}
+
+/**
  * Sauvegarde (lecture-fusion-écriture) : les réglages locaux l'emportent (l'utilisateur vient de
  * les changer), les marqueurs sont unis, et les entrées du cloud non supprimées sont conservées.
  */

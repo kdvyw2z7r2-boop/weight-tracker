@@ -10,6 +10,7 @@ import {
   mergeForSave,
   mergeMeasurements,
   pruneTombstones,
+  settingsForImport,
   updateSyncMarkers,
 } from './syncMerge'
 
@@ -379,5 +380,28 @@ describe('mensurations (settings.measurements)', () => {
     const a = normalizeSettings({ measurements: { b: r('b', '2026-11-02', 1, 1), a: r('a', '2026-11-01', 1, 1) } })
     const b = normalizeSettings({ measurements: { a: r('a', '2026-11-01', 1, 1), b: r('b', '2026-11-02', 1, 1) } })
     expect(JSON.stringify(a.measurements)).toBe(JSON.stringify(b.measurements))
+  })
+})
+
+describe('settingsForImport (restauration d’une sauvegarde JSON)', () => {
+  const r = (id, date, waist, updatedAt) => ({ id, date, waist, updatedAt })
+  const now = 1_800_000_000_000
+
+  it('restaure les mensurations de la sauvegarde même si elles ont été supprimées ici depuis', () => {
+    const current = { measurements: { b: r('b', '2026-11-20', 85, 5) }, deletedEntries: { a: now - 1000 } }
+    const backup = { measurements: { a: r('a', '2026-11-01', 90, 1) } }
+    const next = settingsForImport(current, backup, now)
+    expect(Object.keys(next.measurements)).toEqual(['a'])
+    // Avec les marqueurs de restauration (persist restoreAdded), « a » survit à la fusion de sauvegarde.
+    const markers = updateSyncMarkers(next, Object.values(current.measurements), Object.values(next.measurements), now, {
+      restoreAdded: true,
+    })
+    const saved = mergeForSave({ entries: [], settings: { ...next, ...markers } }, { entries: [], settings: current }, now)
+    expect(Object.keys(saved.settings.measurements)).toEqual(['a'])
+  })
+
+  it('sauvegarde sans mensurations : les mensurations actuelles sont gardées', () => {
+    const current = { measurements: { b: r('b', '2026-11-20', 85, 5) } }
+    expect(Object.keys(settingsForImport(current, { unit: 'kg' }, now).measurements)).toEqual(['b'])
   })
 })

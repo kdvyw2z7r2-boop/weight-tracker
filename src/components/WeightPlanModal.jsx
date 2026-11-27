@@ -131,7 +131,7 @@ function WeightPlanModal({ isOpen, onClose, onSave, onRemove, startWeight, targe
             <button
               type="button"
               onClick={handleRemove}
-              className="press-button mb-2 min-h-11 w-full text-[15px] font-semibold text-danger"
+              className="press-button mb-2 min-h-11 w-full text-[15px] font-semibold text-danger-text"
             >
               Retirer le rythme de l&apos;objectif
             </button>

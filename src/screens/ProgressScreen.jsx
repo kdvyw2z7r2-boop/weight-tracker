@@ -90,7 +90,7 @@ function ProgressScreen({
       : `${bmiStats.delta > 0 ? '+' : ''}${formatBmi(bmiStats.delta)}`
 
   const bmiDeltaColor =
-    bmiStats.delta == null ? 'text-text-tertiary' : bmiStats.delta <= 0 ? 'text-good' : 'text-danger'
+    bmiStats.delta == null ? 'text-text-tertiary' : bmiStats.delta <= 0 ? 'text-good-text' : 'text-danger-text'
 
   // Plan section
   const anchor = useMemo(() => resolvePlanAnchor(settings, entries), [settings, entries])
@@ -207,7 +207,7 @@ function ProgressScreen({
             <button
               type="button"
               onClick={onEditPlan}
-              className="press-button -my-2 min-h-11 px-2 text-[15px] font-semibold text-accent"
+              className="press-button -my-2 min-h-11 px-2 text-[15px] font-semibold text-accent-text"
             >
               Modifier
             </button>
