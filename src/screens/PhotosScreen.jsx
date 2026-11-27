@@ -385,6 +385,7 @@ function PhotosScreen({
                 type="button"
                 onClick={() => onPlay()}
                 disabled={photos.length < 2}
+                title={photos.length < 2 ? "Pas assez de photos" : undefined}
                 className="press-button h-11 flex-1 rounded-[14px] bg-bg-elevated text-[14px] font-medium text-text-primary disabled:opacity-40"
               >
                 Défilé

@@ -5,6 +5,7 @@ import InstallAppTutorial from './components/InstallAppTutorial'
 import PageTransition from './components/PageTransition'
 import PhotoViewerModal from './components/PhotoViewerModal'
 import AddPhotoFlow from './components/photos/AddPhotoFlow'
+import PhotoTimelapse from './components/photos/PhotoTimelapse'
 import WeightPlanModal from './components/WeightPlanModal'
 import useDailyReminder from './hooks/useDailyReminder'
 import useScrollDirection from './hooks/useScrollDirection'
@@ -75,6 +76,7 @@ function App() {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
   const [planModalDismissed, setPlanModalDismissed] = useState(false)
   const [photoViewerItem, setPhotoViewerItem] = useState(null)
+  const [timelapseOpen, setTimelapseOpen] = useState(false)
   const [photoFlow, setPhotoFlow] = useState(null)
   const [photoFocusDate, setPhotoFocusDate] = useState(null)
   const [addModalDate, setAddModalDate] = useState(null)
@@ -228,6 +230,9 @@ function App() {
   // Photos : pas de FAB (il masquerait les vignettes récentes ; l'écran a son propre bouton principal).
   const showFab = tab !== 'settings' && tab !== 'photos'
 
+  const openTimelapse = useCallback(() => setTimelapseOpen(true), [])
+  const closeTimelapse = useCallback(() => setTimelapseOpen(false), [])
+
   const activeScreen = useMemo(() => {
     switch (tab) {
       case 'log':
@@ -254,6 +259,7 @@ function App() {
             onViewPhoto={setPhotoViewerItem}
             onRecropPhoto={recropPhoto}
             onShare={sharePair}
+            onPlay={openTimelapse}
             sharing={isSharing}
             sharePendingKey={pendingShare?.key ?? null}
             refreshing={isRefreshingUrls}
@@ -296,6 +302,7 @@ function App() {
     deletePhoto,
     recropPhoto,
     sharePair,
+    openTimelapse,
     isSharing,
     pendingShare,
     isRefreshingUrls,
@@ -356,6 +363,9 @@ function App() {
         onUpload={sync.uploadDailyPhoto}
         onClose={closePhotoFlow}
       />
+      {timelapseOpen ? (
+        <PhotoTimelapse photos={photos} unit={settings.unit} onClose={closeTimelapse} />
+      ) : null}
       <PhotoViewerModal
         key={photoViewerItem ? `photo-${photoViewerItem.date}` : 'photo-closed'}
         isOpen={Boolean(photoViewerItem && photoViewerPhoto)}
