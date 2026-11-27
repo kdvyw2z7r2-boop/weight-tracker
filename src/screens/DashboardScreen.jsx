@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import ProgressCompare from '../components/ProgressCompare'
 import ProgressRing from '../components/ProgressRing'
 import WeightChart from '../components/WeightChart'
 import useAnimatedNumber from '../hooks/useAnimatedNumber'
@@ -13,7 +12,7 @@ import {
 import { computeWeightPlan, resolvePlanAnchor } from '../utils/weightPlan'
 import { formatPace, formatWeight, formatWeightWithUnit } from '../utils/format'
 
-function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEditPlan }) {
+function DashboardScreen({ entries, settings, movingAverage, onEditPlan }) {
   const latest = entries[0]
   const previous = entries[1]
   const delta = latest && previous ? latest.weight - previous.weight : null
@@ -178,8 +177,6 @@ function DashboardScreen({ entries, settings, movingAverage, photosByDate, onEdi
               ) : null}
             </ul>
           </div>
-
-          <ProgressCompare photosByDate={photosByDate} entries={entries} unit={settings.unit} />
         </>
       )}
     </section>

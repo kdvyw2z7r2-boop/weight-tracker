@@ -14,8 +14,6 @@ function PhotoViewerModal({
   unit = 'kg',
   onChangePhoto,
   onDeletePhoto,
-  onCompare,
-  canCompare = false,
   isSaving = false,
 }) {
   const [render, setRender] = useState(false)
@@ -255,14 +253,6 @@ function PhotoViewerModal({
                         Recadrer
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={onCompare}
-                      disabled={!canCompare || isBusy}
-                      className="press-button mt-2 h-11 w-full rounded-[14px] bg-bg-elevated text-[14px] font-medium text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Comparer avant / après
-                    </button>
                   </>
                 )}
               </>

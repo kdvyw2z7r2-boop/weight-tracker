@@ -1,19 +1,19 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import BottomNav from './BottomNav'
 import AddWeightModal from './components/AddWeightModal'
 import InstallAppTutorial from './components/InstallAppTutorial'
 import PageTransition from './components/PageTransition'
-import PhotoActionSheet from './components/PhotoActionSheet'
-import PhotoCompareModal from './components/PhotoCompareModal'
 import PhotoViewerModal from './components/PhotoViewerModal'
+import QuickPhotoFlow from './components/photos/QuickPhotoFlow'
 import WeightPlanModal from './components/WeightPlanModal'
 import useDailyReminder from './hooks/useDailyReminder'
 import useScrollDirection from './hooks/useScrollDirection'
 import useSync from './hooks/useSync'
+import { useToast } from './hooks/useToast'
 import useUserId from './hooks/useUserId'
-import { buildEntryComparePair } from './utils/progressPhotos'
 import DashboardScreen from './screens/DashboardScreen'
 import LogScreen from './screens/LogScreen'
+import PhotosScreen from './screens/PhotosScreen'
 import ProgressScreen from './screens/ProgressScreen'
 import SettingsScreen from './screens/SettingsScreen'
 
@@ -70,10 +70,11 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
   const [planModalDismissed, setPlanModalDismissed] = useState(false)
-  const [photoActionEntry, setPhotoActionEntry] = useState(null)
-  const [photoViewerEntry, setPhotoViewerEntry] = useState(null)
-  const [photoCompareEntry, setPhotoCompareEntry] = useState(null)
+  const [photoViewerItem, setPhotoViewerItem] = useState(null)
+  const [photoFocusDate, setPhotoFocusDate] = useState(null)
   const [addModalDate, setAddModalDate] = useState(null)
+  const photoFlowRef = useRef(null)
+  const { show: showToast } = useToast()
 
   const { settings, updateSettings } = sync
   const latest = sync.entries[0]
@@ -112,34 +113,46 @@ function App() {
     setAddModalDate(null)
   }, [])
 
-  const handlePhotoPress = useCallback((entry) => {
-    setPhotoActionEntry(entry)
+  const changeTab = useCallback((nextTab) => {
+    setTab(nextTab)
+    setPhotoFocusDate(null)
   }, [])
 
-  const closePhotoAction = useCallback(() => {
-    setPhotoActionEntry(null)
-  }, [])
+  const { hasPhotoForDate, deleteDailyPhoto, isSupabaseConfigured } = sync
 
-  const openPhotoViewer = useCallback((entry) => {
-    setPhotoActionEntry(null)
-    setPhotoViewerEntry(entry)
+  // Ajout / remplacement / recadrage : point unique, remplacé par l'ajout guidé (Task 5).
+  const addPhoto = useCallback((date) => {
+    setPhotoFocusDate(date)
+    photoFlowRef.current?.pick(date)
   }, [])
+  const replacePhoto = useCallback((date) => photoFlowRef.current?.pick(date), [])
+  const recropPhoto = useCallback((item) => photoFlowRef.current?.recrop(item), [])
 
-  const closePhotoViewer = useCallback(() => {
-    setPhotoViewerEntry(null)
-  }, [])
+  const deletePhoto = useCallback(
+    async (date) => {
+      try {
+        await deleteDailyPhoto(date)
+        showToast('Photo supprimée')
+      } catch (deleteError) {
+        showToast(deleteError.message || 'Impossible de supprimer la photo.', { tone: 'error' })
+      }
+    },
+    [deleteDailyPhoto, showToast],
+  )
 
-  const openPhotoCompare = useCallback((entry) => {
-    setPhotoActionEntry(null)
-    setPhotoViewerEntry(null)
-    setPhotoCompareEntry(entry)
-  }, [])
+  // Journal : ouvre l'onglet Photos sur ce jour ; sans photo, lance l'ajout pour cette date.
+  const handlePhotoPress = useCallback(
+    (entry) => {
+      setTab('photos')
+      setPhotoFocusDate(entry.date)
+      // Sans Supabase, l'onglet affiche l'état explicatif : pas de sélecteur de fichier.
+      if (isSupabaseConfigured && !hasPhotoForDate(entry.date)) photoFlowRef.current?.pick(entry.date)
+    },
+    [hasPhotoForDate, isSupabaseConfigured],
+  )
 
-  const closePhotoCompare = useCallback(() => {
-    setPhotoCompareEntry(null)
-  }, [])
-
-  const showFab = tab !== 'settings'
+  // Photos : pas de FAB (il masquerait les vignettes récentes ; l'écran a son propre bouton principal).
+  const showFab = tab !== 'settings' && tab !== 'photos'
 
   const activeScreen = useMemo(() => {
     switch (tab) {
@@ -151,6 +164,21 @@ function App() {
             onAdd={() => openAddModal()}
             onPhotoPress={handlePhotoPress}
             hasPhotoForDate={sync.hasPhotoForDate}
+          />
+        )
+      case 'photos':
+        return (
+          <PhotosScreen
+            entries={sync.entries}
+            settings={settings}
+            photosByDate={sync.photosByDate}
+            isSupabaseConfigured={sync.isSupabaseConfigured}
+            focusDate={photoFocusDate}
+            onAddPhoto={addPhoto}
+            onReplacePhoto={replacePhoto}
+            onDeletePhoto={deletePhoto}
+            onViewPhoto={setPhotoViewerItem}
+            onRecropPhoto={recropPhoto}
           />
         )
       case 'progress':
@@ -170,24 +198,31 @@ function App() {
             entries={sync.entries}
             settings={settings}
             movingAverage={sync.getMovingAverage(7)}
-            photosByDate={sync.photosByDate}
             onAdd={() => openAddModal()}
             onEditPlan={openPlanModal}
           />
         )
     }
-  }, [tab, sync, settings, updateSettings, openPlanModal, openAddModal, handlePhotoPress])
+  }, [
+    tab,
+    sync,
+    settings,
+    updateSettings,
+    openPlanModal,
+    openAddModal,
+    handlePhotoPress,
+    photoFocusDate,
+    addPhoto,
+    replacePhoto,
+    deletePhoto,
+    recropPhoto,
+  ])
 
   if (sync.isLoading || !sync.hasLoaded) {
     return <LoadingScreen error={sync.error} onRetry={sync.reload} />
   }
 
-  const photoViewerPhoto = photoViewerEntry ? sync.getPhotoForDate(photoViewerEntry.date) : null
-  const photoComparePair = photoCompareEntry
-    ? buildEntryComparePair(sync.photosByDate, sync.entries, photoCompareEntry.date)
-    : null
-  const getCanCompare = (entry) =>
-    entry ? buildEntryComparePair(sync.photosByDate, sync.entries, entry.date) != null : false
+  const photoViewerPhoto = photoViewerItem ? sync.getPhotoForDate(photoViewerItem.date) : null
 
   return (
     <div className="relative min-h-screen bg-bg-primary text-text-primary">
@@ -214,7 +249,7 @@ function App() {
         </button>
       ) : null}
 
-      <BottomNav current={tab} onChange={setTab} />
+      <BottomNav current={tab} onChange={changeTab} />
 
       <AddWeightModal
         key={isModalOpen ? `add-${addModalDate ?? 'today'}` : 'add-closed'}
@@ -227,58 +262,24 @@ function App() {
         isSaving={sync.isSaving}
         isSupabaseConfigured={sync.isSupabaseConfigured}
       />
-      <PhotoActionSheet
-        key={photoActionEntry ? `photo-action-${photoActionEntry.id}` : 'photo-action-closed'}
-        isOpen={Boolean(photoActionEntry)}
-        onClose={closePhotoAction}
-        date={photoActionEntry?.date}
-        weight={photoActionEntry?.weight}
-        unit={settings.unit}
-        hasPhoto={photoActionEntry ? sync.hasPhotoForDate(photoActionEntry.date) : false}
-        canCompare={getCanCompare(photoActionEntry)}
-        isSaving={sync.isSaving}
-        onUpload={async (blob) => {
-          if (!photoActionEntry) return
-          await sync.uploadDailyPhoto(photoActionEntry.date, blob)
-        }}
-        onView={() => {
-          if (!photoActionEntry) return
-          openPhotoViewer(photoActionEntry)
-        }}
-        onCompare={() => {
-          if (!photoActionEntry) return
-          openPhotoCompare(photoActionEntry)
-        }}
-      />
+      <QuickPhotoFlow ref={photoFlowRef} onUpload={sync.uploadDailyPhoto} />
       <PhotoViewerModal
-        key={photoViewerEntry ? `photo-${photoViewerEntry.id}` : 'photo-closed'}
-        isOpen={Boolean(photoViewerEntry)}
-        onClose={closePhotoViewer}
-        date={photoViewerEntry?.date}
+        key={photoViewerItem ? `photo-${photoViewerItem.date}` : 'photo-closed'}
+        isOpen={Boolean(photoViewerItem && photoViewerPhoto)}
+        onClose={() => setPhotoViewerItem(null)}
+        date={photoViewerItem?.date}
         photoUrl={photoViewerPhoto?.url}
-        weight={photoViewerEntry?.weight}
+        weight={photoViewerItem?.weight}
         unit={settings.unit}
-        canCompare={getCanCompare(photoViewerEntry)}
         isSaving={sync.isSaving}
         onChangePhoto={async (blob) => {
-          if (!photoViewerEntry) return
-          await sync.uploadDailyPhoto(photoViewerEntry.date, blob)
+          if (!photoViewerItem) return
+          await sync.uploadDailyPhoto(photoViewerItem.date, blob)
         }}
         onDeletePhoto={async () => {
-          if (!photoViewerEntry) return
-          await sync.deleteDailyPhoto(photoViewerEntry.date)
+          if (!photoViewerItem) return
+          await sync.deleteDailyPhoto(photoViewerItem.date)
         }}
-        onCompare={() => {
-          if (!photoViewerEntry) return
-          openPhotoCompare(photoViewerEntry)
-        }}
-      />
-      <PhotoCompareModal
-        key={photoCompareEntry ? `photo-compare-${photoCompareEntry.id}` : 'photo-compare-closed'}
-        isOpen={Boolean(photoCompareEntry && photoComparePair)}
-        onClose={closePhotoCompare}
-        pair={photoComparePair}
-        unit={settings.unit}
       />
       <WeightPlanModal
         key={`plan-${settings.weeklyPace ?? 'new'}-${isPlanModalOpen || shouldAutoOpenPlan}`}

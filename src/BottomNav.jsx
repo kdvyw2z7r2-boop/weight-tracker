@@ -25,6 +25,19 @@ const tabs = [
     ),
   },
   {
+    id: 'photos',
+    label: 'Photos',
+    icon: () => (
+      <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <path
+          d="M4 8h3l1.5-2h7L17 8h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z"
+          strokeLinejoin="round"
+        />
+        <circle cx="12" cy="13" r="3.5" />
+      </svg>
+    ),
+  },
+  {
     id: 'progress',
     label: 'Progrès',
     icon: () => (
@@ -71,7 +84,7 @@ function BottomNav({ current, onChange }) {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-bg-nav/97 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl" style={{ borderColor: 'color-mix(in srgb, var(--color-accent-blue) 15%, transparent)' }}>
-      <div ref={containerRef} className="relative mx-auto grid h-16 w-full max-w-md grid-cols-4">
+      <div ref={containerRef} className="relative mx-auto grid h-16 w-full max-w-md grid-cols-5">
         <span
           className="nav-indicator absolute top-0 h-[2px] rounded-full transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
           style={{
@@ -92,8 +105,9 @@ function BottomNav({ current, onChange }) {
               }}
               type="button"
               onClick={() => onChange(tab.id)}
+              aria-current={active ? 'page' : undefined}
               style={active ? { color: 'var(--color-accent-blue)', filter: 'drop-shadow(0 0 4px color-mix(in srgb, var(--color-accent-blue) 50%, transparent))' } : undefined}
-              className={`press-button flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
+              className={`press-button flex min-w-0 flex-col items-center justify-center gap-1 transition-all duration-200 ${
                 active ? '' : 'text-text-tertiary'
               }`}
             >
