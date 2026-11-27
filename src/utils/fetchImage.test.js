@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fetchWithRetry } from './fetchImage'
+import { fetchPhotoBlob, fetchWithRetry, PhotoUnavailableError } from './fetchImage'
 
 const res = (status, blob = new Blob(['x'])) => ({ ok: status >= 200 && status < 300, status, blob: async () => blob })
 
@@ -46,5 +46,31 @@ describe('fetchWithRetry', () => {
     const fetchFn = vi.fn().mockResolvedValue(res(403))
     await expect(fetchWithRetry('u1', { fetchFn, onExpired: async () => null })).rejects.toThrow()
     expect(fetchFn).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('fetchPhotoBlob', () => {
+  const photo = (url) => ({ date: '2026-11-26', url })
+
+  it('URL présente -> fetchWithRetry, re-signature sur expiration', async () => {
+    const fetchFn = vi.fn().mockResolvedValueOnce(res(403)).mockResolvedValueOnce(res(200))
+    const refresh = vi.fn().mockResolvedValue({ '2026-11-26': { url: 'u2' } })
+    await fetchPhotoBlob(photo('u1'), { refresh, fetchFn })
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(fetchFn).toHaveBeenNthCalledWith(2, 'u2')
+  })
+
+  it('URL absente -> re-signature puis chargement', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(res(200))
+    const refresh = vi.fn().mockResolvedValue({ '2026-11-26': { url: 'u2' } })
+    await fetchPhotoBlob(photo(null), { refresh, fetchFn })
+    expect(fetchFn).toHaveBeenCalledWith('u2')
+  })
+
+  it('URL toujours absente après re-signature -> PhotoUnavailableError', async () => {
+    const fetchFn = vi.fn()
+    const refresh = vi.fn().mockResolvedValue({})
+    await expect(fetchPhotoBlob(photo(null), { refresh, fetchFn })).rejects.toBeInstanceOf(PhotoUnavailableError)
+    expect(fetchFn).not.toHaveBeenCalled()
   })
 })

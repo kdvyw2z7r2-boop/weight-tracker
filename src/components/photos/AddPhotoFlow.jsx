@@ -18,7 +18,7 @@ function AddPhotoFlow({ open, ...props }) {
   return <AddPhotoSession {...props} />
 }
 
-function AddPhotoSession({ date, photos, recropUrl = null, onUpload, onClose, onSaved }) {
+function AddPhotoSession({ date, photos, recropUrl = null, onUpload, onRefreshUrls, onClose, onSaved }) {
   const cameraRef = useRef(null)
   const libraryRef = useRef(null)
   const { show } = useToast()
@@ -26,7 +26,9 @@ function AddPhotoSession({ date, photos, recropUrl = null, onUpload, onClose, on
 
   useEffect(() => {
     if (!recropUrl) return
-    openCropFromUrl(recropUrl).catch((error) => {
+    // URL expirée : re-signature puis une nouvelle tentative.
+    const onExpired = onRefreshUrls ? async () => (await onRefreshUrls())[date]?.url ?? null : undefined
+    openCropFromUrl(recropUrl, { onExpired }).catch((error) => {
       show(error.message || 'Impossible de charger la photo.', { tone: 'error' })
       onClose()
     })

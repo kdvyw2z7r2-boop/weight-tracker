@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import BottomNav from './BottomNav'
 import AddWeightModal from './components/AddWeightModal'
 import InstallAppTutorial from './components/InstallAppTutorial'
@@ -12,7 +12,7 @@ import useScrollDirection from './hooks/useScrollDirection'
 import useSync from './hooks/useSync'
 import { useToast } from './hooks/useToast'
 import useUserId from './hooks/useUserId'
-import { fetchWithRetry } from './utils/fetchImage'
+import { fetchPhotoBlob, PhotoUnavailableError } from './utils/fetchImage'
 import { formatDateCompact } from './utils/locale'
 import { ghostFor, listPhotos } from './utils/progressPhotos'
 import { buildShareCaption, composeShareImage, makeShareFile, shareOrDownload } from './utils/shareImage'
@@ -152,26 +152,29 @@ function App() {
     [showToast],
   )
 
+  // Verrou synchrone : deux touchers dans la même frame ne composent qu'une image.
+  const sharingRef = useRef(false)
   const sharePair = useCallback(
     async (pair, stats) => {
-      if (!pair?.after || isSharing) return
+      if (!pair?.after || sharingRef.current) return
+      sharingRef.current = true
       const key = `${pair.before.date}|${pair.after.date}`
-
-      // iOS : le partage a été refusé faute de geste frais ; ce toucher partage le fichier déjà composé.
-      if (pendingShare?.key === key) {
-        const result = await shareOrDownload(pendingShare.file)
-        if (finishShare(result)) setPendingShare(null)
-        return
-      }
-
-      setIsSharing(true)
       try {
-        // Une seule re-signature, partagée par les deux photos si les deux ont expiré.
+        // iOS : le partage a été refusé faute de geste frais ; ce toucher partage le fichier déjà composé.
+        if (pendingShare?.key === key) {
+          const result = await shareOrDownload(pendingShare.file)
+          if (finishShare(result)) setPendingShare(null)
+          return
+        }
+
+        setIsSharing(true)
+        // Une seule re-signature, partagée par les deux photos (URL absente ou expirée).
         let refreshed = null
-        const refreshOnce = () => (refreshed ??= refreshUrls())
-        const fetchPhoto = (photo) =>
-          fetchWithRetry(photo.url, { onExpired: async () => (await refreshOnce())[photo.date]?.url ?? null })
-        const [beforeBlob, afterBlob] = await Promise.all([fetchPhoto(pair.before), fetchPhoto(pair.after)])
+        const refresh = () => (refreshed ??= refreshUrls())
+        const [beforeBlob, afterBlob] = await Promise.all([
+          fetchPhotoBlob(pair.before, { refresh }),
+          fetchPhotoBlob(pair.after, { refresh }),
+        ])
         const blob = await composeShareImage({
           beforeBlob,
           afterBlob,
@@ -182,13 +185,17 @@ function App() {
         const file = makeShareFile(blob, pair.after.date)
         const result = await shareOrDownload(file)
         if (!finishShare(result)) setPendingShare({ key, file })
-      } catch {
-        showToast('Impossible de créer l’image à partager.', { tone: 'error' })
+      } catch (shareError) {
+        showToast(
+          shareError instanceof PhotoUnavailableError ? shareError.message : 'Impossible de créer l’image à partager.',
+          { tone: 'error' },
+        )
       } finally {
         setIsSharing(false)
+        sharingRef.current = false
       }
     },
-    [isSharing, pendingShare, finishShare, refreshUrls, settings.unit, showToast],
+    [pendingShare, finishShare, refreshUrls, settings.unit, showToast],
   )
 
   const ghostUrlForDate = useCallback((date) => ghostFor(photos, date)?.url ?? null, [photos])
@@ -361,6 +368,7 @@ function App() {
         recropUrl={photoFlow?.recropUrl}
         photos={photos}
         onUpload={sync.uploadDailyPhoto}
+        onRefreshUrls={refreshUrls}
         onClose={closePhotoFlow}
       />
       {timelapseOpen ? (

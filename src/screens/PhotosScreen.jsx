@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ConfirmSheet from "../components/ConfirmSheet";
 import CompareModeSwitch from "../components/photos/CompareModeSwitch";
@@ -28,11 +28,14 @@ const SHORTCUTS = [
   { key: "d7", label: "7 jours" },
 ];
 
-// Hauteur du comparateur bornée pour garder la frise à l'écran (≈ 287 px de haut à 844 px).
-const FRAME_HEIGHT = "calc(100svh - 557px)";
+// Hauteur du comparateur bornée pour garder la frise à l'écran. Rideau/fondu : pas de rangée
+// de pastilles Avant/Après (les étiquettes du cadre en tiennent lieu) ni de curseur sous le cadre,
+// d'où un cadre plus haut (≈ 383 px, soit 215 px de large, à 390×844).
+const SIDE_HEIGHT = "calc(100svh - 517px)";
+const SINGLE_HEIGHT = "calc(100svh - 461px)";
 const COMPARER_STYLE = {
-  side: { maxWidth: `clamp(280px, calc(${FRAME_HEIGHT} * 1.125 + 8px), 100%)` },
-  single: { maxWidth: `clamp(160px, calc(${FRAME_HEIGHT} * 0.5625), 315px)` },
+  side: { maxWidth: `clamp(280px, calc(${SIDE_HEIGHT} * 1.125 + 8px), 100%)` },
+  single: { maxWidth: `clamp(160px, calc(${SINGLE_HEIGHT} * 0.5625), 315px)` },
 };
 
 function readMode() {
@@ -71,11 +74,14 @@ const samePair = (a, b) =>
   a.before.date === b.before.date &&
   (a.after?.date ?? null) === (b.after?.date ?? null);
 
-function Header() {
+function Header({ children = null }) {
   return (
-    <h2 className="animate-fade-up text-[20px] font-black uppercase tracking-tight neon-text-cyan">
-      Photos
-    </h2>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h2 className="animate-fade-up text-[20px] font-black uppercase tracking-tight neon-text-cyan">
+        Photos
+      </h2>
+      {children}
+    </div>
   );
 }
 
@@ -184,6 +190,18 @@ function PhotosScreen({
     else if (next.after?.date === photo.date) setActiveSlot("after");
   };
 
+  // Image en échec (URL signée sans doute expirée) : une seule re-signature par URL.
+  const refreshedUrlsRef = useRef(new Set());
+  const handleImageError = useCallback(
+    (photo) => {
+      if (!photo?.url || refreshing || refreshedUrlsRef.current.has(photo.url))
+        return;
+      refreshedUrlsRef.current.add(photo.url);
+      onRefreshUrls?.();
+    },
+    [onRefreshUrls, refreshing],
+  );
+
   const closeOptions = useCallback(() => setOptionsPhoto(null), []);
   const cancelDelete = useCallback(() => setDeletePhoto(null), []);
 
@@ -232,6 +250,10 @@ function PhotosScreen({
     (s) => s.key === "start" || photos.length >= 2,
   );
   const showSlots = photos.length >= 2 && pair?.after;
+  const singleFrame = Boolean(pair?.after) && mode !== "side";
+  const slots = showSlots
+    ? { active: activeSlot, onChange: setActiveSlot }
+    : undefined;
   const statsTone =
     stats?.isGood === true
       ? "text-accent-green"
@@ -241,7 +263,11 @@ function PhotosScreen({
 
   return (
     <section className="space-y-3" aria-busy={refreshing}>
-      <Header />
+      <Header>
+        {pair?.after ? (
+          <CompareModeSwitch value={mode} onChange={changeMode} />
+        ) : null}
+      </Header>
 
       <div
         className="flex flex-wrap gap-2"
@@ -276,25 +302,17 @@ function PhotosScreen({
         })}
       </div>
 
-      {pair?.after ? (
-        <div className="flex justify-center">
-          <CompareModeSwitch value={mode} onChange={changeMode} />
-        </div>
-      ) : null}
-
       {pair ? (
         <div
           className="mx-auto w-full"
-          style={
-            pair.after && mode !== "side"
-              ? COMPARER_STYLE.single
-              : COMPARER_STYLE.side
-          }
+          style={singleFrame ? COMPARER_STYLE.single : COMPARER_STYLE.side}
         >
           <PhotoComparer
             before={pair.before}
             after={pair.after}
             mode={mode}
+            slots={singleFrame ? slots : undefined}
+            onImageError={handleImageError}
             onRetryUrl={refreshing ? undefined : onRefreshUrls}
           />
         </div>
@@ -311,7 +329,7 @@ function PhotosScreen({
         </p>
       ) : null}
 
-      {showSlots ? (
+      {showSlots && !singleFrame ? (
         <div
           role="radiogroup"
           aria-label="Photo à modifier"
@@ -357,6 +375,7 @@ function PhotosScreen({
         onSelect={handleSelect}
         onOptions={setOptionsPhoto}
         onRetryUrl={refreshing ? undefined : onRefreshUrls}
+        onImageError={handleImageError}
       />
 
       <div className="space-y-2 pt-1">

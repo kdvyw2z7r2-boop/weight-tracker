@@ -67,6 +67,54 @@ function Label({ children, align = 'left' }) {
   )
 }
 
+const SLOT_TONES = {
+  before: 'bg-accent-blue text-bg-primary',
+  after: 'bg-accent-purple text-white',
+}
+
+/**
+ * Étiquettes d'un cadre unique (rideau, fondu) : Avant en haut à gauche, Après en bas à droite
+ * (jamais sur la même ligne), tronquées si le cadre est étroit. Avec `slots`, elles servent aussi
+ * de sélecteur « Photo à modifier » (remplacent les pastilles sous le comparateur).
+ */
+function CornerLabels({ before, after, slots, afterOffset = '' }) {
+  const items = [
+    { key: 'before', text: `Avant · ${formatDateCompact(before.date)}`, pos: 'top-0 left-0 items-start justify-start' },
+    { key: 'after', text: `Après · ${formatDateCompact(after.date)}`, pos: `${afterOffset || 'bottom-0'} right-0 items-end justify-end` },
+  ]
+  const pill = 'block min-w-0 truncate rounded-full px-2.5 py-1 text-[11px] font-medium'
+
+  if (!slots) {
+    return items.map((item) => (
+      <span key={item.key} className={`pointer-events-none absolute flex max-w-full p-2 ${item.pos}`}>
+        <span className={`${pill} bg-black/60 text-white`}>{item.text}</span>
+      </span>
+    ))
+  }
+
+  return (
+    <div role="radiogroup" aria-label="Photo à modifier" className="pointer-events-none absolute inset-0">
+      {items.map((item) => {
+        const active = slots.active === item.key
+        return (
+          <button
+            key={item.key}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => slots.onChange(item.key)}
+            className={`pointer-events-auto absolute flex min-h-[44px] max-w-full p-2 outline-none focus-visible:[&>span]:ring-2 focus-visible:[&>span]:ring-white ${item.pos}`}
+          >
+            <span className={`${pill} ${active ? `${SLOT_TONES[item.key]} font-semibold` : 'bg-black/60 text-white'}`}>
+              {item.text}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function EmptyAfter() {
   return (
     <div
@@ -77,7 +125,7 @@ function EmptyAfter() {
   )
 }
 
-function Curtain({ before, after, onImageError, onRetryUrl }) {
+function Curtain({ before, after, slots, onImageError, onRetryUrl }) {
   const boxRef = useRef(null)
   const [percent, setPercent] = useState(50)
 
@@ -112,8 +160,6 @@ function Curtain({ before, after, onImageError, onRetryUrl }) {
       <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${percent}%)` }}>
         <PhotoImage photo={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
       </div>
-      <Label>Avant · {formatDateCompact(before.date)}</Label>
-      <Label align="right">Après · {formatDateCompact(after.date)}</Label>
       <div
         role="slider"
         tabIndex={0}
@@ -134,37 +180,38 @@ function Curtain({ before, after, onImageError, onRetryUrl }) {
           ↔
         </span>
       </div>
+      <CornerLabels before={before} after={after} slots={slots} />
     </div>
   )
 }
 
-function Fade({ before, after, onImageError, onRetryUrl }) {
+function Fade({ before, after, slots, onImageError, onRetryUrl }) {
   const [opacity, setOpacity] = useState(50)
 
+  // Curseur d'opacité dans le cadre (bas) : le cadre garde toute la hauteur disponible.
   return (
-    <div className="flex flex-col gap-1">
-      <div className={`${FRAME} ${MAX_H}`}>
-        <PhotoImage photo={before} onImageError={onImageError} onRetryUrl={onRetryUrl} />
-        <div className="absolute inset-0" style={{ opacity: opacity / 100 }}>
-          <PhotoImage photo={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
-        </div>
-        <Label>Avant · {formatDateCompact(before.date)}</Label>
-        <Label align="right">Après · {formatDateCompact(after.date)}</Label>
+    <div className={`${FRAME} ${MAX_H}`}>
+      <PhotoImage photo={before} onImageError={onImageError} onRetryUrl={onRetryUrl} />
+      <div className="absolute inset-0" style={{ opacity: opacity / 100 }}>
+        <PhotoImage photo={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
       </div>
-      <input
-        type="range"
-        min={0}
-        max={100}
-        value={opacity}
-        onChange={(event) => setOpacity(Number(event.target.value))}
-        aria-label="Opacité de la photo après"
-        className="h-11 w-full accent-white"
-      />
+      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/60 to-transparent px-3">
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={opacity}
+          onChange={(event) => setOpacity(Number(event.target.value))}
+          aria-label="Opacité de la photo après"
+          className="h-11 w-full accent-white"
+        />
+      </div>
+      <CornerLabels before={before} after={after} slots={slots} afterOffset="bottom-10" />
     </div>
   )
 }
 
-function PhotoComparer({ before, after, mode = 'side', onImageError, onRetryUrl }) {
+function PhotoComparer({ before, after, mode = 'side', slots, onImageError, onRetryUrl }) {
   if (!after) {
     return (
       <div className="grid grid-cols-2 gap-2">
@@ -177,8 +224,9 @@ function PhotoComparer({ before, after, mode = 'side', onImageError, onRetryUrl 
     )
   }
 
-  if (mode === 'curtain') return <Curtain before={before} after={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
-  if (mode === 'fade') return <Fade before={before} after={after} onImageError={onImageError} onRetryUrl={onRetryUrl} />
+  const single = { before, after, slots, onImageError, onRetryUrl }
+  if (mode === 'curtain') return <Curtain {...single} />
+  if (mode === 'fade') return <Fade {...single} />
 
   return (
     <div className="grid grid-cols-2 gap-2">

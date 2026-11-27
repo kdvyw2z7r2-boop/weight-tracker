@@ -28,7 +28,7 @@ function ThumbImage({ url, onFail }) {
   )
 }
 
-function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, onRetryUrl }) {
+function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, onRetryUrl, onImageError }) {
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
   const longPress = useRef({ timer: null, fired: false })
@@ -79,7 +79,14 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, 
         className={`press-button relative block aspect-[9/16] w-14 overflow-hidden rounded-xl bg-bg-elevated ${ring} [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-blue`}
       >
         {photo.url && !failed ? (
-          <ThumbImage key={`${photo.url}-${attempt}`} url={photo.url} onFail={() => setFailed(true)} />
+          <ThumbImage
+            key={`${photo.url}-${attempt}`}
+            url={photo.url}
+            onFail={() => {
+              setFailed(true)
+              onImageError?.(photo)
+            }}
+          />
         ) : null}
         {slotLabel ? (
           <span
@@ -105,8 +112,10 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, 
         <button
           type="button"
           onClick={() => {
+            // URL peut-être expirée : nouvelle tentative + re-signature des URLs.
             setFailed(false)
             setAttempt((n) => n + 1)
+            onRetryUrl?.()
           }}
           aria-label={`Réessayer de charger la photo du ${dateLabel}`}
           className="press-button absolute left-1/2 top-[calc(50%-10px)] flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[18px] text-text-secondary"
@@ -137,7 +146,7 @@ function TimelineItem({ photo, slot, showOptions, itemRef, onSelect, onOptions, 
  * Frise horizontale des photos (ancien -> récent), groupée par mois.
  * Toucher une vignette -> onSelect(photo) ; appui long ou « … » -> onOptions(photo).
  */
-function PhotoTimeline({ photos, pair, activeSlot, onSelect, onOptions, onRetryUrl }) {
+function PhotoTimeline({ photos, pair, activeSlot, onSelect, onOptions, onRetryUrl, onImageError }) {
   const scrollerRef = useRef(null)
   const itemRefs = useRef({})
   const hasScrolledRef = useRef(false)
@@ -184,6 +193,7 @@ function PhotoTimeline({ photos, pair, activeSlot, onSelect, onOptions, onRetryU
                 onSelect={onSelect}
                 onOptions={onOptions}
                 onRetryUrl={onRetryUrl}
+                onImageError={onImageError}
               />
             ))}
           </ul>

@@ -16,3 +16,22 @@ export async function fetchWithRetry(url, { fetchFn = fetch, onExpired } = {}) {
   if (!response.ok) throw new Error(`Chargement de la photo impossible (${response.status})`)
   return response.blob()
 }
+
+/** Photo sans URL signée, même après re-signature. */
+export class PhotoUnavailableError extends Error {
+  constructor() {
+    super('Photo indisponible, réessaie plus tard.')
+    this.name = 'PhotoUnavailableError'
+  }
+}
+
+/**
+ * Blob d'une photo `{ date, url }`. URL absente = expirée : `refresh()` (table re-signée)
+ * fournit l'URL ; toujours absente -> PhotoUnavailableError.
+ */
+export async function fetchPhotoBlob(photo, { refresh, fetchFn = fetch } = {}) {
+  const freshUrl = async () => (await refresh())[photo.date]?.url ?? null
+  const url = photo.url ?? (await freshUrl())
+  if (!url) throw new PhotoUnavailableError()
+  return fetchWithRetry(url, { fetchFn, onExpired: freshUrl })
+}

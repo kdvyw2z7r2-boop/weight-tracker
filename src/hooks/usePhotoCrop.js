@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { fetchWithRetry } from '../utils/fetchImage'
 
 export default function usePhotoCrop() {
   const [pendingImageUrl, setPendingImageUrl] = useState(null)
@@ -40,14 +41,17 @@ export default function usePhotoCrop() {
   )
 
   const openCropFromUrl = useCallback(
-    async (url) => {
+    async (url, { onExpired } = {}) => {
       if (!url) return
 
       let nextUrl = url
       if (!url.startsWith('blob:')) {
-        const response = await fetch(url)
-        if (!response.ok) throw new Error('Impossible de charger la photo.')
-        const blob = await response.blob()
+        let blob
+        try {
+          blob = await fetchWithRetry(url, { onExpired })
+        } catch (error) {
+          throw new Error('Impossible de charger la photo.', { cause: error })
+        }
         nextUrl = URL.createObjectURL(blob)
       }
 
