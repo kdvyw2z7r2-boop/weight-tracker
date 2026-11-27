@@ -1,4 +1,4 @@
-import { formatWeightWithUnit } from './format'
+import { formatDays, formatDelta } from './format'
 import { PHOTO_ASPECT } from './photo'
 
 export const SHARE_WIDTH = 1080
@@ -31,13 +31,10 @@ export function shareLayout({ width = SHARE_WIDTH, height = SHARE_HEIGHT } = {})
   }
 }
 
-const formatDays = (days) => `${days} jour${Math.abs(days) > 1 ? 's' : ''}`
-
 /** « −5,2 kg en 46 jours », ou « 46 jours » sans écart de poids. */
 export function buildShareCaption({ delta, days }, unit = 'kg') {
   if (delta == null) return formatDays(days)
-  const sign = delta < 0 ? '−' : delta > 0 ? '+' : ''
-  return `${sign}${formatWeightWithUnit(Math.abs(delta), unit)} en ${formatDays(days)}`
+  return `${formatDelta(delta, unit)} en ${formatDays(days)}`
 }
 
 function readColors() {
@@ -124,24 +121,15 @@ export async function composeShareImage({ beforeBlob, afterBlob, beforeLabel, af
   }
 }
 
-/**
- * Partage le PNG (feuille de partage native si possible), sinon le télécharge.
- * -> 'shared' | 'downloaded' | 'cancelled'. Lève si le partage échoue ET que le téléchargement est impossible.
- */
-export async function shareOrDownload(blob, date) {
-  const filename = `avant-apres-${date}.png`
-  const file = new File([blob], filename, { type: 'image/png' })
+export const shareFilename = (date) => `avant-apres-${date}.png`
 
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: 'Avant / après' })
-      return 'shared'
-    } catch (error) {
-      if (error?.name === 'AbortError') return 'cancelled'
-      // autre échec du partage natif : repli sur le téléchargement
-    }
-  }
+export function makeShareFile(blob, date) {
+  return new File([blob], shareFilename(date), { type: 'image/png' })
+}
 
+export const canShareFile = (file) => Boolean(navigator.canShare?.({ files: [file] }))
+
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob)
   try {
     const link = document.createElement('a')
@@ -153,5 +141,25 @@ export async function shareOrDownload(blob, date) {
   } finally {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
+}
+
+/**
+ * Partage le fichier (feuille native) ou, sans support, le télécharge.
+ * -> 'shared' | 'downloaded' | 'cancelled' | 'needs-gesture'.
+ * 'needs-gesture' : le navigateur (iOS) exige un geste utilisateur frais ; l'appelant garde le fichier
+ * et rappelle cette fonction au prochain toucher (appel synchrone au geste, sans téléchargement).
+ */
+export async function shareOrDownload(file) {
+  if (canShareFile(file)) {
+    try {
+      await navigator.share({ files: [file], title: 'Avant / après' })
+      return 'shared'
+    } catch (error) {
+      if (error?.name === 'AbortError') return 'cancelled'
+      if (error?.name === 'NotAllowedError') return 'needs-gesture'
+      // autre échec du partage natif : repli sur le téléchargement
+    }
+  }
+  downloadBlob(file, file.name)
   return 'downloaded'
 }

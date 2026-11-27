@@ -16,6 +16,7 @@ import {
   updateSyncMarkers,
 } from '../utils/syncMerge'
 import { createSaveQueue } from '../utils/saveQueue'
+import { createSingleFlight } from '../utils/singleFlight'
 
 const API_ENDPOINT = '/api/sync'
 const LEGACY_ENTRIES_KEY = 'wt_entries'
@@ -751,6 +752,33 @@ function useSync(userId) {
     [photosByDate],
   )
 
+  const photosRef = useRef(photosByDate)
+  useEffect(() => {
+    photosRef.current = photosByDate
+  }, [photosByDate])
+
+  // Re-signe les URLs des photos (sans écran de chargement). Appels concurrents mutualisés ;
+  // résout avec la table à jour, utilisable immédiatement (sans attendre le rendu).
+  const refreshFlightRef = useRef(null)
+  useEffect(() => {
+    refreshFlightRef.current = createSingleFlight(async () => {
+      const current = photosRef.current
+      if (!db) return current
+      const fresh = Object.fromEntries(Object.entries(current).map(([date, photo]) => [date, { ...photo }]))
+      await hydratePhotoUrls(db, fresh)
+      const merged = Object.fromEntries(
+        Object.entries(photosRef.current).map(([date, photo]) => [
+          date,
+          fresh[date]?.storagePath === photo.storagePath && fresh[date].url ? { ...photo, url: fresh[date].url } : photo,
+        ]),
+      )
+      photosRef.current = merged
+      setPhotosByDate(merged)
+      return merged
+    })
+  }, [db])
+  const refreshPhotoUrls = useCallback(() => refreshFlightRef.current(), [])
+
   const getPhotoForDate = useCallback((date) => photosByDate[date] ?? null, [photosByDate])
 
   const exportCSV = useCallback(() => {
@@ -815,6 +843,7 @@ function useSync(userId) {
       error,
       isSupabaseConfigured,
       reload: loadData,
+      refreshPhotoUrls,
       addEntry,
       updateEntry,
       deleteEntry,
@@ -844,6 +873,7 @@ function useSync(userId) {
       syncStatus,
       error,
       loadData,
+      refreshPhotoUrls,
       addEntry,
       updateEntry,
       deleteEntry,

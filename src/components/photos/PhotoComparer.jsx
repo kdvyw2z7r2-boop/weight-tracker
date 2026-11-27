@@ -19,22 +19,18 @@ function PhotoImageInner({ photo, onImageError, onRetryUrl, className = '' }) {
       <div
         className={`absolute inset-0 flex flex-col items-center justify-center gap-2 bg-bg-elevated ${className}`}
       >
-        {photo.url ? (
+        {photo.url || onRetryUrl ? (
           <button
             type="button"
             onClick={() => {
-              setFailed(false)
-              onImageError?.(photo)
+              if (photo.url) {
+                setFailed(false)
+                onImageError?.(photo)
+              } else {
+                // URL signée absente : un seul rafraîchissement des URLs.
+                onRetryUrl()
+              }
             }}
-            className="press-button min-h-[44px] rounded-full bg-white/10 px-4 text-[12px] font-medium text-text-secondary"
-          >
-            Réessayer
-          </button>
-        ) : onRetryUrl ? (
-          // URL signée absente (signature échouée) : un seul rafraîchissement des URLs.
-          <button
-            type="button"
-            onClick={() => onRetryUrl()}
             className="press-button min-h-[44px] rounded-full bg-white/10 px-4 text-[12px] font-medium text-text-secondary"
           >
             Réessayer
